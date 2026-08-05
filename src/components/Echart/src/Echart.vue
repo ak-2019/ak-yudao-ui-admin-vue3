@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { EChartsOption } from 'echarts'
+import type { ECElementEvent } from 'echarts/core'
 import echarts from '@/plugins/echarts'
 import { debounce } from 'lodash-es'
 import 'echarts-wordcloud'
@@ -29,6 +30,10 @@ const props = defineProps({
   width: propTypes.oneOfType([Number, String]).def(''),
   height: propTypes.oneOfType([Number, String]).def('500px')
 })
+
+const emit = defineEmits<{
+  'chart-click': [event: ECElementEvent]
+}>()
 
 const isDark = computed(() => appStore.getIsDark)
 
@@ -64,6 +69,7 @@ const initChart = () => {
   if (unref(elRef) && props.options) {
     echartRef = echarts.init(unref(elRef) as HTMLElement)
     echartRef?.setOption(unref(options))
+    echartRef?.on('click', (event) => emit('chart-click', event))
   }
 }
 
@@ -106,6 +112,9 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeHandler)
   unref(contentEl) &&
     (unref(contentEl) as Element).removeEventListener('transitionend', contentResizeHandler)
+  resizeHandler.cancel()
+  echartRef?.dispose()
+  echartRef = null
 })
 
 onActivated(() => {

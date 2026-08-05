@@ -1,0 +1,131 @@
+
+> yudao-ui-admin-vue3@2026.07-snapshot dev D:\MyWorkProject\807073836\ak-yudao-ui-admin-vue3
+> vite --mode env.local "--host" "127.0.0.1" "--port" "5174"
+
+[2m11:42:11[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m Re-optimizing dependencies because vite config has changed
+
+  [32m[1mVITE[22m v8.1.4[39m  [42m [1menv.local[22m [49m  [2mready in [0m[1m23685[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m5174[22m/[39m
+[2m11:42:26[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [optimizer] scanning dependencies...
+[2m11:43:02[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [optimizer] bundling dependencies...
+[2m11:43:10[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [optimizer] bundling dependencies...
+[2m12:42:31[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/views/finance/stock/components/BatchTrackingPeriodDialog.vue[22m
+[2m12:53:04[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m12:54:20[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m13:03:32[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m13:05:06[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m13:05:49[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m13:07:30[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m13:56:33[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/views/finance/stock/components/FundamentalPerformanceChart.vue[22m
+[2m13:56:33[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/views/finance/stock/components/ShareholderCountChart.vue[22m
+[2m14:01:55[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/views/finance/stock/components/StockTechnicalAnalysisChart.vue[22m
+[2m14:06:44[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m14:07:47[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m14:11:12[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [optimizer] bundling dependencies...
+[2m14:11:19[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mdependency optimized: [33mtechnicalindicators[32m[39m
+[2m14:11:19[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32moptimized dependencies changed. reloading[39m
+[2m14:11:40[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/FundamentalPerformanceChart.vue[22m
+[2m14:11:40[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/ShareholderCountChart.vue[22m
+[2m14:11:40[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockTechnicalAnalysisChart.vue[22m
+[2m14:13:20[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m14:14:23[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m14:35:32[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/views/finance/stock/guide/index.vue[22m
+[2m14:40:55[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m14:42:21[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m14:43:33[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m14:44:25[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m15:30:11[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue, /src/views/finance/stock/components/HistoryImportDialog.vue, /src/views/finance/stock/components/DailyPriceForm.vue[22m
+[2m15:32:46[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/guide/index.vue[22m
+[2m15:37:43[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m15:38:37[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m16:06:57[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue, /src/views/finance/stock/components/HistoryImportDialog.vue, /src/views/finance/stock/components/DailyPriceForm.vue[22m
+[2m16:28:57[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/views/finance/stock/position/index.vue[22m
+[2m16:30:06[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/guide/index.vue[22m
+[2m16:33:53[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m16:35:02[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m16:36:04[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m16:37:17[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m16:38:53[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/guide/index.vue[22m
+[2m16:39:21[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/guide/index.vue[22m
+[2m16:48:01[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/HistoryImportDialog.vue?vue&type=style&index=0&scoped=10348838&lang.css[22m
+[2m16:48:01[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/DailyPriceForm.vue?vue&type=style&index=0&scoped=fdaaf7f6&lang.css[22m
+[2m16:48:01[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/MarketResultMeta.vue, /src/views/finance/stock/components/MarketResultMeta.vue?vue&type=style&index=0&scoped=682465a9&lang.css, /src/views/finance/stock/components/MarketResultHeader.vue[22m
+[2m16:52:03[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m16:52:47[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m17:50:37[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue, /src/views/finance/stock/components/HistoryImportDialog.vue, /src/views/finance/stock/components/DailyPriceForm.vue[22m
+[2m17:57:24[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m17:58:47[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m18:34:23[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue, /src/views/finance/stock/components/HistoryImportDialog.vue, /src/views/finance/stock/components/DailyPriceForm.vue[22m
+[2m18:41:29[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m18:42:44[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m20:29:16[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/guide/index.vue[22m
+[2m20:32:39[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/guide/index.vue[22m
+[2m21:06:22[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue, /src/views/finance/stock/components/HistoryImportDialog.vue, /src/views/finance/stock/components/DailyPriceForm.vue[22m
+[2m21:06:22[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/views/finance/stock/components/BatchStockPoolAddDialog.vue[22m
+[2m21:08:54[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue[22m
+[2m21:09:23[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue[22m
+[2m21:09:39[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue[22m
+[2m21:10:43[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/guide/index.vue[22m
+[2m21:19:16[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue, /src/views/finance/stock/components/HistoryImportDialog.vue, /src/views/finance/stock/components/DailyPriceForm.vue[22m
+[2m21:19:32[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/guide/index.vue[22m
+[2m21:46:07[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue, /src/views/finance/stock/components/HistoryImportDialog.vue, /src/views/finance/stock/components/DailyPriceForm.vue[22m
+[2m21:46:07[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/guide/index.vue[22m
+[2m22:46:39[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue[22m
+[2m22:46:59[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue?vue&type=style&index=0&scoped=4240ed8d&lang.css[22m
+[2m22:50:09[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue?vue&type=style&index=0&scoped=4240ed8d&lang.css[22m
+[2m23:00:21[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/guide/index.vue[22m
+[2m00:05:49[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue, /src/views/finance/stock/components/HistoryImportDialog.vue, /src/views/finance/stock/components/DailyPriceForm.vue[22m
+[2m00:05:49[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue[22m
+[2m00:05:49[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/DailyPriceForm.vue, /src/views/finance/stock/components/DailyPriceForm.vue?vue&type=style&index=0&scoped=fdaaf7f6&lang.css[22m
+[2m00:05:49[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/HistoryImportDialog.vue[22m
+[2m00:06:31[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue?vue&type=style&index=0&scoped=4240ed8d&lang.css[22m
+[2m00:07:53[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue?vue&type=style&index=0&scoped=4240ed8d&lang.css[22m
+[2m00:12:50[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockTechnicalAnalysisChart.vue[22m
+[2m00:13:33[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockTechnicalAnalysisChart.vue[22m
+[2m00:17:18[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockTechnicalAnalysisChart.vue[22m
+[2m00:19:03[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/guide/index.vue[22m
+[2m01:04:05[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/guide/index.vue[22m
+[2m01:04:25[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/guide/index.vue[22m
+[2m08:37:26[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/Echart/src/Echart.vue[22m
+[2m08:38:13[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/Echart/src/Echart.vue[22m
+[2m08:55:07[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue, /src/views/finance/stock/components/HistoryImportDialog.vue, /src/views/finance/stock/components/DailyPriceForm.vue[22m
+[2m09:50:29[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/views/finance/stock/components/GroupInformationPanel.vue[22m
+[2m09:52:08[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/HistoryImportDialog.vue, /src/views/finance/stock/components/HistoryImportDialog.vue?vue&type=style&index=0&scoped=10348838&lang.css[22m
+[2m09:53:24[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/guide/index.vue[22m
+[2m10:46:34[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/guide/index.vue[22m
+[2m10:46:34[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/guide/index.vue[22m
+[2m12:11:19[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue, /src/views/finance/stock/components/HistoryImportDialog.vue, /src/views/finance/stock/components/DailyPriceForm.vue[22m
+[2m12:15:32[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/views/finance/stock/statistics/components/StockCapabilityAnalysisPanel.vue[22m
+[2m12:21:32[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/guide/index.vue[22m
+[2m14:58:05[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue, /src/views/finance/stock/components/HistoryImportDialog.vue, /src/views/finance/stock/components/DailyPriceForm.vue[22m
+[2m14:58:05[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/views/finance/stock/components/StockTagAssignDialog.vue[22m
+[2m14:58:05[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/views/finance/stock/components/StockTagManageDialog.vue[22m
+[2m15:52:47[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue, /src/views/finance/stock/components/HistoryImportDialog.vue, /src/views/finance/stock/components/DailyPriceForm.vue[22m
+[2m15:52:47[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/views/finance/stock/components/GroupInformationPanel.vue[22m
+[2m15:52:47[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue, /src/views/finance/stock/components/HistoryImportDialog.vue, /src/views/finance/stock/components/DailyPriceForm.vue[22m
+[2m15:53:53[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/views/finance/stock/components/GroupInformationPanel.vue[22m
+[2m15:54:13[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue, /src/views/finance/stock/components/HistoryImportDialog.vue, /src/views/finance/stock/components/DailyPriceForm.vue[22m
+[2m15:54:55[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue, /src/views/finance/stock/components/StockDetailDrawer.vue?vue&type=style&index=0&scoped=4240ed8d&lang.css[22m
+[2m15:57:33[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue[22m
+[2m16:00:38[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m16:02:20[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m16:45:35[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/components/StockDetailDrawer.vue, /src/views/finance/stock/components/HistoryImportDialog.vue, /src/views/finance/stock/components/DailyPriceForm.vue[22m
+[2m17:05:11[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/views/finance/stock/trade-record/index.vue[22m
+[2m17:07:05[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/guide/index.vue[22m
+[2m17:10:05[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/guide/index.vue[22m
+[2m18:43:28[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/guide/index.vue[22m
+[2m20:27:20[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/views/finance/stock/position/components/StockPortfolioImportDialog.vue[22m
+[2m20:40:48[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/views/finance/stock/guide/index.vue[22m
+[2m20:45:00[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m20:45:01[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m20:45:03[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m20:45:04[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m20:45:05[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m20:46:19[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m21:06:03[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m21:06:31[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m21:38:46[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m21:39:58[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m21:56:46[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m
+[2m21:57:39[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mdist-prod/index.html[22m

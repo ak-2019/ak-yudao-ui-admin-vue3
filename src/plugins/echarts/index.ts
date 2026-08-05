@@ -2,13 +2,15 @@ import * as echarts from 'echarts/core'
 
 import {
   BarChart,
+  CandlestickChart,
   FunnelChart,
   GaugeChart,
   LineChart,
   MapChart,
   PictorialBarChart,
   PieChart,
-  RadarChart
+  RadarChart,
+  ScatterChart
 } from 'echarts/charts'
 
 import {
@@ -38,12 +40,14 @@ echarts.use([
   ParallelComponent,
   VisualMapComponent,
   BarChart,
+  CandlestickChart,
   LineChart,
   PieChart,
   MapChart,
   CanvasRenderer,
   PictorialBarChart,
   RadarChart,
+  ScatterChart,
   GaugeChart,
   FunnelChart
 ])
