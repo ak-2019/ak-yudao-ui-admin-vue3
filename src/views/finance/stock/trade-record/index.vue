@@ -12,6 +12,13 @@
       <el-select v-model="query.tradeType" class="type-filter" clearable placeholder="全部方向">
         <el-option label="买入" value="BUY" />
         <el-option label="卖出" value="SELL" />
+        <el-option label="银行转存" value="BANK_DEPOSIT" />
+        <el-option label="银行转取" value="BANK_WITHDRAWAL" />
+        <el-option label="除权除息" value="EX_DIVIDEND" />
+        <el-option label="股息个税" value="DIVIDEND_TAX" />
+        <el-option label="证券转入" value="SECURITY_TRANSFER_IN" />
+        <el-option label="证券转出" value="SECURITY_TRANSFER_OUT" />
+        <el-option label="新股到账" value="NEW_SHARE_CREDIT" />
       </el-select>
       <el-date-picker
         v-model="query.dateRange"
@@ -85,14 +92,14 @@
     >
       <el-table-column prop="stockId" label="股票" min-width="150" sortable="custom">
         <template #default="{ row }">
-          <div class="stock-name">{{ row.stockName || '--' }}</div>
-          <div class="stock-code">{{ stockSymbol(row) }}</div>
+          <div class="stock-name">{{ row.stockId ? row.stockName || '--' : '资金流水' }}</div>
+          <div class="stock-code">{{ row.stockId ? stockSymbol(row) : '银行资金' }}</div>
         </template>
       </el-table-column>
       <el-table-column prop="tradeType" label="方向" width="86" align="center" sortable="custom">
         <template #default="{ row }">
-          <el-tag :type="row.tradeType === 'BUY' ? 'danger' : 'success'" effect="plain">
-            {{ row.tradeType === 'BUY' ? '买入' : '卖出' }}
+          <el-tag :type="tradeTypeTagTypes[row.tradeType]" effect="plain">
+            {{ tradeTypeLabels[row.tradeType] }}
           </el-tag>
         </template>
       </el-table-column>
@@ -164,7 +171,11 @@
       <el-table-column label="操作" width="104" fixed="right" align="center">
         <template #default="{ row }">
           <div class="row-actions">
-            <el-tooltip content="编辑成交记录" placement="top">
+            <el-tooltip
+              v-if="isStockTrade(row.tradeType)"
+              content="编辑成交记录"
+              placement="top"
+            >
               <el-button
                 link
                 type="primary"
@@ -347,7 +358,7 @@ interface TradeQuery {
 interface TradeForm {
   id?: number
   stockId: number | null
-  tradeType: StockTradeType
+  tradeType: StockSecurityTradeType
   tradeDate: string
   tradeTime: string
   price: string
@@ -373,6 +384,34 @@ const marketLabels: Record<FinanceMarket, string> = {
   SZSE: '深',
   BSE: '北'
 }
+type StockSecurityTradeType = Extract<StockTradeType, 'BUY' | 'SELL'>
+const tradeTypeLabels: Record<StockTradeType, string> = {
+  BUY: '买入',
+  SELL: '卖出',
+  BANK_DEPOSIT: '银行转存',
+  BANK_WITHDRAWAL: '银行转取',
+  EX_DIVIDEND: '除权除息',
+  DIVIDEND_TAX: '股息个税',
+  SECURITY_TRANSFER_IN: '证券转入',
+  SECURITY_TRANSFER_OUT: '证券转出',
+  NEW_SHARE_CREDIT: '新股到账'
+}
+const tradeTypeTagTypes: Record<
+  StockTradeType,
+  'primary' | 'danger' | 'success' | 'info' | 'warning'
+> = {
+  BUY: 'danger',
+  SELL: 'success',
+  BANK_DEPOSIT: 'info',
+  BANK_WITHDRAWAL: 'warning',
+  EX_DIVIDEND: 'primary',
+  DIVIDEND_TAX: 'warning',
+  SECURITY_TRANSFER_IN: 'success',
+  SECURITY_TRANSFER_OUT: 'info',
+  NEW_SHARE_CREDIT: 'primary'
+}
+const isStockTrade = (tradeType: StockTradeType): tradeType is StockSecurityTradeType =>
+  tradeType === 'BUY' || tradeType === 'SELL'
 
 const emptySummary = (): StockTradeRecordSummaryVO => ({
   recordCount: 0,
@@ -540,6 +579,7 @@ const openCreate = () => {
 }
 
 const openEdit = (row: StockTradeRecordVO) => {
+  if (!isStockTrade(row.tradeType) || row.stockId === null) return
   formMode.value = 'update'
   Object.assign(formData, {
     id: row.id,
@@ -621,7 +661,9 @@ const submitForm = async () => {
 }
 
 const handleDelete = async (row: StockTradeRecordVO) => {
-  await message.delConfirm(`确定删除 ${row.stockName || row.code || '该股票'} 的成交记录吗？`)
+  await message.delConfirm(
+    `确定删除 ${row.stockName || row.code || tradeTypeLabels[row.tradeType]} 的成交记录吗？`
+  )
   await StockTradeRecordApi.delete(row.id)
   message.success('成交记录已删除')
   if (records.value.length === 1 && query.pageNo > 1) query.pageNo -= 1

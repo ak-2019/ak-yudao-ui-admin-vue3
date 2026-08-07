@@ -35,21 +35,21 @@
           class="!w-1/1"
         />
       </el-form-item>
-      <el-form-item label="回复数 Token 数" prop="maxTokens">
+      <el-form-item label="最大回复 Token" prop="maxTokens">
         <el-input-number
           v-model="formData.maxTokens"
-          placeholder="请输入回复数 Token 数"
+          placeholder="请输入最大回复 Token"
           :min="0"
-          :max="8192"
+          :max="384000"
           class="!w-1/1"
         />
       </el-form-item>
-      <el-form-item label="上下文数量" prop="maxContexts">
+      <el-form-item label="上下文消息数" prop="maxContexts">
         <el-input-number
           v-model="formData.maxContexts"
-          placeholder="请输入上下文数量"
+          placeholder="请输入上下文消息数"
           :min="0"
-          :max="20"
+          :max="1000000"
           class="!w-1/1"
         />
       </el-form-item>

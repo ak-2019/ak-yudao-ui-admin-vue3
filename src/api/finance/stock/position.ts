@@ -68,9 +68,12 @@ export interface StockPortfolioImportSheetResult {
   total: number
   created: number
   updated: number
+  removed: number
   skipped: number
   failed: number
 }
+
+export type StockPortfolioImportMode = 'REPLACE' | 'UPDATE'
 
 export interface StockPortfolioImportResult {
   positions: StockPortfolioImportSheetResult
@@ -107,10 +110,10 @@ export const StockPositionApi = {
   getClosedList: () =>
     request.get<StockClosedPositionVO[]>({ url: '/finance/stock-position/closed-list' }),
 
-  importPortfolio: (file: File, updateSupport: boolean) => {
+  importPortfolio: (file: File, mode: StockPortfolioImportMode) => {
     const data = new FormData()
     data.append('file', file)
-    data.append('updateSupport', String(updateSupport))
+    data.append('mode', mode)
     return request.post<StockPortfolioImportResult>({
       url: '/finance/stock-position/import-portfolio',
       data,

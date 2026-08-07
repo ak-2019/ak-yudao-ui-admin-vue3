@@ -39,9 +39,19 @@
         </template>
       </el-upload>
 
-      <el-checkbox v-model="updateSupport" class="overwrite-option" :disabled="loading">
-        用 Excel 覆盖已存在股票的当前持仓快照
-      </el-checkbox>
+      <div class="import-mode">
+        <span class="import-mode__label">导入方式</span>
+        <el-segmented v-model="importMode" :options="importModeOptions" :disabled="loading" />
+      </div>
+
+      <el-alert
+        v-if="importMode === 'REPLACE'"
+        class="replace-alert"
+        title="全量覆盖会移除三个 Sheet 中未出现的现有数据"
+        type="warning"
+        :closable="false"
+        show-icon
+      />
 
       <div v-if="loading" class="import-progress" role="status" aria-live="polite">
         <Icon icon="ep:loading" class="is-loading" />
@@ -65,6 +75,7 @@
         <el-table-column prop="total" label="读取" width="72" align="right" />
         <el-table-column prop="created" label="新增" width="72" align="right" />
         <el-table-column prop="updated" label="更新" width="72" align="right" />
+        <el-table-column prop="removed" label="移除" width="72" align="right" />
         <el-table-column prop="skipped" label="跳过" width="72" align="right" />
         <el-table-column prop="failed" label="失败" width="72" align="right">
           <template #default="{ row }">
@@ -98,7 +109,11 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
 import type { UploadInstance, UploadUserFile } from 'element-plus'
-import { StockPortfolioImportResult, StockPositionApi } from '@/api/finance/stock/position'
+import type {
+  StockPortfolioImportMode,
+  StockPortfolioImportResult
+} from '@/api/finance/stock/position'
+import { StockPositionApi } from '@/api/finance/stock/position'
 
 defineOptions({ name: 'StockPortfolioImportDialog' })
 
@@ -106,7 +121,7 @@ const emit = defineEmits<{ success: [] }>()
 const message = useMessage()
 const visible = ref(false)
 const loading = ref(false)
-const updateSupport = ref(true)
+const importMode = ref<StockPortfolioImportMode>('REPLACE')
 const fileList = ref<UploadUserFile[]>([])
 const result = ref<StockPortfolioImportResult>()
 const uploadRef = ref<UploadInstance>()
@@ -115,6 +130,11 @@ const sheets = [
   { index: 1, name: '持仓数据', summary: '当前仓位、收益和区间表现' },
   { index: 2, name: '已清仓数据', summary: '历史清仓收益与大盘比较' },
   { index: 3, name: '交易记录', summary: '买卖成交、发生金额和费用' }
+]
+
+const importModeOptions: Array<{ label: string; value: StockPortfolioImportMode }> = [
+  { label: '全量覆盖', value: 'REPLACE' },
+  { label: '更新已有', value: 'UPDATE' }
 ]
 
 const resultRows = computed(() =>
@@ -129,7 +149,7 @@ const open = () => {
 const reset = () => {
   fileList.value = []
   result.value = undefined
-  updateSupport.value = true
+  importMode.value = 'REPLACE'
   nextTick(() => uploadRef.value?.clearFiles())
 }
 
@@ -140,11 +160,22 @@ const submit = async () => {
     message.warning('请选择需要导入的 Excel 文件')
     return
   }
+  if (importMode.value === 'REPLACE') {
+    try {
+      await message.confirm('全量覆盖将以 Excel 为准移除未出现的数据，确定继续吗？')
+    } catch {
+      return
+    }
+  }
   loading.value = true
   try {
-    result.value = await StockPositionApi.importPortfolio(rawFile, updateSupport.value)
+    result.value = await StockPositionApi.importPortfolio(rawFile, importMode.value)
     emit('success')
-    message.success('投资组合数据已导入')
+    if (result.value.errors.length) {
+      message.warning(`导入完成，${result.value.errors.length} 条数据需要检查`)
+    } else {
+      message.success('投资组合数据已导入')
+    }
   } catch {
     // 请求错误由 Axios 全局拦截器提示；此处捕获以避免未处理 Promise。
   } finally {
@@ -232,8 +263,20 @@ defineExpose({ open })
   text-align: center;
 }
 
-.overwrite-option {
-  margin-top: 14px;
+.import-mode {
+  display: flex;
+  margin-top: 16px;
+  align-items: center;
+  gap: 12px;
+}
+
+.import-mode__label {
+  font-weight: 600;
+  color: var(--el-text-color-regular);
+}
+
+.replace-alert {
+  margin-top: 12px;
 }
 
 .import-progress {

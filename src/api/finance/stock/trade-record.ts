@@ -1,7 +1,16 @@
 import request from '@/config/axios'
 import type { FinanceMarket, PagedResult } from './index'
 
-export type StockTradeType = 'BUY' | 'SELL'
+export type StockTradeType =
+  | 'BUY'
+  | 'SELL'
+  | 'BANK_DEPOSIT'
+  | 'BANK_WITHDRAWAL'
+  | 'EX_DIVIDEND'
+  | 'DIVIDEND_TAX'
+  | 'SECURITY_TRANSFER_IN'
+  | 'SECURITY_TRANSFER_OUT'
+  | 'NEW_SHARE_CREDIT'
 
 export interface StockTradeRecordPageParams {
   pageNo: number
@@ -16,7 +25,7 @@ export interface StockTradeRecordPageParams {
 
 export interface StockTradeRecordVO {
   id: number
-  stockId: number
+  stockId: number | null
   market: FinanceMarket | null
   code: string | null
   stockName: string | null

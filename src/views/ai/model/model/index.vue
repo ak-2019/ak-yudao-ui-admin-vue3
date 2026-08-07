@@ -79,8 +79,8 @@
         </template>
       </el-table-column>
       <el-table-column label="温度参数" align="center" prop="temperature" min-width="80" />
-      <el-table-column label="回复数 Token 数" align="center" prop="maxTokens" min-width="140" />
-      <el-table-column label="上下文数量" align="center" prop="maxContexts" min-width="100" />
+      <el-table-column label="最大回复 Token" align="center" prop="maxTokens" min-width="140" />
+      <el-table-column label="上下文消息数" align="center" prop="maxContexts" min-width="120" />
       <el-table-column label="操作" align="center" width="180" fixed="right">
         <template #default="scope">
           <el-button

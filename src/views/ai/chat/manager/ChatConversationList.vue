@@ -71,8 +71,8 @@
         width="180px"
       />
       <el-table-column label="温度参数" align="center" prop="temperature" />
-      <el-table-column label="回复 Token 数" align="center" prop="maxTokens" width="120" />
-      <el-table-column label="上下文数量" align="center" prop="maxContexts" width="120" />
+      <el-table-column label="最大回复 Token" align="center" prop="maxTokens" width="140" />
+      <el-table-column label="上下文消息数" align="center" prop="maxContexts" width="140" />
       <el-table-column label="操作" align="center" width="180" fixed="right">
         <template #default="scope">
           <el-button

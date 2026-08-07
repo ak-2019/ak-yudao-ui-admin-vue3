@@ -675,6 +675,13 @@
           >
             <el-option label="买入" value="BUY" />
             <el-option label="卖出" value="SELL" />
+            <el-option label="银行转存" value="BANK_DEPOSIT" />
+            <el-option label="银行转取" value="BANK_WITHDRAWAL" />
+            <el-option label="除权除息" value="EX_DIVIDEND" />
+            <el-option label="股息个税" value="DIVIDEND_TAX" />
+            <el-option label="证券转入" value="SECURITY_TRANSFER_IN" />
+            <el-option label="证券转出" value="SECURITY_TRANSFER_OUT" />
+            <el-option label="新股到账" value="NEW_SHARE_CREDIT" />
           </el-select>
           <el-date-picker
             v-model="tradeDateRange"
@@ -734,8 +741,10 @@
             sortable="custom"
           >
             <template #default="{ row }">
-              <div class="stock-name">{{ row.stockName || '--' }}</div>
-              <div class="stock-code">{{ stockSymbol(row.market, row.code) }}</div>
+              <div class="stock-name">{{ row.stockId ? row.stockName || '--' : '资金流水' }}</div>
+              <div class="stock-code">
+                {{ row.stockId ? stockSymbol(row.market, row.code) : '银行资金' }}
+              </div>
             </template>
           </el-table-column>
           <el-table-column prop="tradeDate" label="成交日期" width="116" sortable="custom" />
@@ -751,11 +760,11 @@
           >
             <template #default="{ row }">
               <el-tag
-                :type="row.tradeType === 'BUY' ? 'danger' : 'success'"
+                :type="tradeTypeTagTypes[row.tradeType]"
                 effect="plain"
                 size="small"
               >
-                {{ row.tradeType === 'BUY' ? '买入' : '卖出' }}
+                {{ tradeTypeLabels[row.tradeType] }}
               </el-tag>
             </template>
           </el-table-column>
@@ -854,7 +863,7 @@
         <el-input-number
           v-model="formData.quantity"
           class="w-100%"
-          :min="0.0001"
+          :min="0"
           :step="100"
           :precision="4"
           controls-position="right"
@@ -945,7 +954,8 @@ import {
   StockTradeRecordApi,
   StockTradeRecordPageParams,
   StockTradeRecordSummaryVO,
-  StockTradeRecordVO
+  StockTradeRecordVO,
+  StockTradeType
 } from '@/api/finance/stock/trade-record'
 import StockDetailDrawer from '../components/StockDetailDrawer.vue'
 import StockPortfolioImportDialog from './components/StockPortfolioImportDialog.vue'
@@ -988,6 +998,31 @@ interface PositionRow extends StockPositionVO {
 
 const message = useMessage()
 const MONEY_PRECISION = 3
+const tradeTypeLabels: Record<StockTradeType, string> = {
+  BUY: '买入',
+  SELL: '卖出',
+  BANK_DEPOSIT: '银行转存',
+  BANK_WITHDRAWAL: '银行转取',
+  EX_DIVIDEND: '除权除息',
+  DIVIDEND_TAX: '股息个税',
+  SECURITY_TRANSFER_IN: '证券转入',
+  SECURITY_TRANSFER_OUT: '证券转出',
+  NEW_SHARE_CREDIT: '新股到账'
+}
+const tradeTypeTagTypes: Record<
+  StockTradeType,
+  'primary' | 'danger' | 'success' | 'info' | 'warning'
+> = {
+  BUY: 'danger',
+  SELL: 'success',
+  BANK_DEPOSIT: 'info',
+  BANK_WITHDRAWAL: 'warning',
+  EX_DIVIDEND: 'primary',
+  DIVIDEND_TAX: 'warning',
+  SECURITY_TRANSFER_IN: 'success',
+  SECURITY_TRANSFER_OUT: 'info',
+  NEW_SHARE_CREDIT: 'primary'
+}
 const loading = ref(false)
 const quoteLoading = ref(false)
 const tradeLoading = ref(false)
