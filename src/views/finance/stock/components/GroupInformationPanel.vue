@@ -11,13 +11,13 @@
           v-model="keyword"
           clearable
           class="information-keyword"
-          placeholder="搜索股票、标题、来源或摘要"
+          :placeholder="searchPlaceholder"
           @keyup.enter="handleSearch"
           @clear="handleSearch"
         >
           <template #prefix><Icon icon="ep:search" /></template>
           <template #append>
-            <el-button aria-label="搜索资讯公告" @click="handleSearch">
+            <el-button :aria-label="`搜索${informationTypeLabel}`" @click="handleSearch">
               <Icon icon="ep:search" />
             </el-button>
           </template>
@@ -28,17 +28,6 @@
           <span>{{ total }} 条结果</span>
           <span>最近同步 {{ formatDateTime(result?.fetchedAt) }}</span>
         </div>
-        <el-tooltip content="从行情源增量同步当前分组" placement="top">
-          <el-button
-            circle
-            aria-label="同步当前分组资讯公告"
-            :loading="syncing"
-            :disabled="props.tracks.length === 0 || props.groupId === undefined"
-            @click="syncInformation"
-          >
-            <Icon icon="ep:refresh" />
-          </el-button>
-        </el-tooltip>
       </div>
     </div>
 
@@ -60,8 +49,8 @@
       max-height="620"
       :empty-text="emptyText"
     >
-      <el-table-column label="发布时间" width="172" sortable prop="publishedAt">
-        <template #default="{ row }">{{ formatDateTime(row.publishedAt) }}</template>
+      <el-table-column :label="dateColumnLabel" width="172" sortable prop="publishedAt">
+        <template #default="{ row }">{{ formatPublishedAt(row.publishedAt) }}</template>
       </el-table-column>
       <el-table-column label="股票" width="150" sortable prop="stockName">
         <template #default="{ row }">
@@ -69,10 +58,19 @@
           <div class="information-stock-symbol">{{ row.market }}:{{ row.code }}</div>
         </template>
       </el-table-column>
-      <el-table-column label="来源" width="130" sortable prop="source" show-overflow-tooltip />
-      <el-table-column label="类型" width="128" sortable prop="announcementType">
+      <el-table-column
+        :label="sourceColumnLabel"
+        width="130"
+        sortable
+        prop="source"
+        show-overflow-tooltip
+      />
+      <el-table-column :label="categoryColumnLabel" width="128" sortable prop="announcementType">
         <template #default="{ row }">
-          {{ row.announcementType || informationTypeLabels[row.type] }}
+          <el-tag v-if="row.type === 'RESEARCH'" size="small" type="warning" effect="plain">
+            {{ row.announcementType || '未评级' }}
+          </el-tag>
+          <span v-else>{{ row.announcementType || informationTypeLabels[row.type] }}</span>
         </template>
       </el-table-column>
       <el-table-column label="标题与摘要" min-width="390" sortable prop="title">
@@ -130,16 +128,17 @@ const props = defineProps<{
 const message = useMessage()
 const informationOptions = [
   { label: '资讯', value: 'NEWS' },
-  { label: '公告', value: 'ANNOUNCEMENT' }
-]
+  { label: '公告', value: 'ANNOUNCEMENT' },
+  { label: '研报', value: 'RESEARCH' }
+] satisfies Array<{ label: string; value: StockInformationType }>
 const informationTypeLabels: Record<StockInformationType, string> = {
   NEWS: '资讯',
-  ANNOUNCEMENT: '公告'
+  ANNOUNCEMENT: '公告',
+  RESEARCH: '研报'
 }
 const informationType = ref<StockInformationType>('NEWS')
 const keyword = ref('')
 const loading = ref(false)
-const syncing = ref(false)
 const items = ref<StockInformationLocalVO[]>([])
 const total = ref(0)
 const result = ref<MarketDataResult<PagedResult<StockInformationLocalVO>>>()
@@ -148,11 +147,21 @@ const query = reactive({ pageNo: 1, pageSize: 20 })
 let requestVersion = 0
 
 const informationTypeLabel = computed(() => informationTypeLabels[informationType.value])
+const dateColumnLabel = computed(() =>
+  informationType.value === 'RESEARCH' ? '报告日期' : '发布时间'
+)
+const sourceColumnLabel = computed(() => (informationType.value === 'RESEARCH' ? '机构' : '来源'))
+const categoryColumnLabel = computed(() => (informationType.value === 'RESEARCH' ? '评级' : '类型'))
+const searchPlaceholder = computed(() =>
+  informationType.value === 'RESEARCH'
+    ? '搜索股票、标题、机构、作者或摘要'
+    : '搜索股票、标题、来源或摘要'
+)
 const tracksSignature = computed(() => props.tracks.map((track) => track.id).join(','))
 const emptyText = computed(() => {
   if (props.tracks.length === 0) return '当前分组暂无股票'
-  if (keyword.value.trim()) return '没有匹配的资讯公告'
-  return `当前分组暂无${informationTypeLabel.value}，可点击刷新进行同步`
+  if (keyword.value.trim()) return `没有匹配的${informationTypeLabel.value}`
+  return `当前分组暂无${informationTypeLabel.value}，可通过顶部“数据同步”获取`
 })
 
 const loadInformation = async () => {
@@ -177,34 +186,17 @@ const loadInformation = async () => {
     total.value = nextResult.data?.total ?? 0
   } catch {
     if (currentVersion === requestVersion) {
-      message.error('本地资讯加载失败，已保留当前结果')
+      message.error(`本地${informationTypeLabel.value}加载失败，已保留当前结果`)
     }
   } finally {
     if (currentVersion === requestVersion) loading.value = false
   }
 }
 
-const syncInformation = async () => {
-  if (props.groupId === undefined || props.tracks.length === 0) return
-  syncing.value = true
-  try {
-    const summary = await StockApi.syncGroupInformation({
-      groupId: props.groupId,
-      type: informationType.value
-    })
-    syncSummary.value = summary
-    if (summary.failed > 0) {
-      message.warning(`同步完成，${summary.failed} 个股票同步失败，已有数据已保留`)
-    } else {
-      message.success(`同步完成：新增 ${summary.inserted} 条，更新 ${summary.updated} 条`)
-    }
-    query.pageNo = 1
-    await loadInformation()
-  } catch {
-    message.error('同步失败，已保留现有本地资讯')
-  } finally {
-    syncing.value = false
-  }
+const refresh = async (summary?: StockInformationSyncVO) => {
+  syncSummary.value = summary
+  query.pageNo = 1
+  await loadInformation()
 }
 
 const handleSearch = () => {
@@ -236,6 +228,11 @@ const openSource = (url: string) => {
 const formatDateTime = (value?: string | null) =>
   value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '--'
 
+const formatPublishedAt = (value?: string | null) =>
+  value
+    ? dayjs(value).format(informationType.value === 'RESEARCH' ? 'YYYY-MM-DD' : 'YYYY-MM-DD HH:mm')
+    : '--'
+
 watch(
   () => [props.active, props.groupId, tracksSignature.value] as const,
   ([active]) => {
@@ -248,6 +245,8 @@ watch(
     }
   }
 )
+
+defineExpose({ refresh })
 
 onBeforeUnmount(() => requestVersion++)
 </script>

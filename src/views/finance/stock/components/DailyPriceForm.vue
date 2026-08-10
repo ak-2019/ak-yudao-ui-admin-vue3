@@ -14,6 +14,7 @@
           value-format="YYYY-MM-DD"
           placeholder="请选择交易日期"
           :disabled-date="disableFutureDate"
+          :shortcuts="financeDateShortcuts"
           class="!w-full"
         />
       </el-form-item>
@@ -89,6 +90,7 @@
 
 <script setup lang="ts">
 import type { FormInstance, FormRules } from 'element-plus'
+import { financeDateShortcuts } from '@/views/finance/utils/dateShortcuts'
 import {
   StockApi,
   StockDailyPriceCreateVO,

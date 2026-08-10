@@ -56,7 +56,8 @@ export const ChatMessageApi = {
     onMessage,
     onError,
     onClose,
-    attachmentUrls?: string[]
+    attachmentUrls?: string[],
+    onOpen?: (response: Response) => Promise<void>
   ) => {
     const token = getAccessToken()
     return fetchEventSource(`${config.base_url}/ai/chat/message/send-stream`, {
@@ -76,6 +77,7 @@ export const ChatMessageApi = {
       onmessage: onMessage,
       onerror: onError,
       onclose: onClose,
+      onopen: onOpen,
       signal: ctrl.signal
     })
   },

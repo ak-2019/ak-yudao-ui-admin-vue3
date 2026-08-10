@@ -1,93 +1,20 @@
 <template>
+  <StockWorkspaceNav />
   <ContentWrap>
-    <div class="portfolio-header">
-      <div class="portfolio-title">
-        <div>
-          <h1>我的持仓</h1>
-          <p>
-            {{ summary.positionCount }} 只持仓
-            <span v-if="summary.latestImportTime"
-              >· 快照 {{ formatDateTime(summary.latestImportTime) }}</span
-            >
-          </p>
-        </div>
-        <el-tag v-if="summary.missingValuationCount" type="warning" effect="plain">
-          {{ summary.missingValuationCount }} 只缺少估值
-        </el-tag>
-      </div>
-
-      <div class="portfolio-actions">
-        <el-button
-          type="primary"
-          v-hasPermi="['finance:stock-position:create']"
-          @click="openCreate"
-        >
-          <Icon icon="ep:plus" class="mr-5px" />
-          录入持仓
-        </el-button>
-        <el-button v-hasPermi="['finance:stock-position:create']" @click="importDialogRef?.open()">
-          <Icon icon="ep:upload" class="mr-5px" />
-          导入 Excel
-        </el-button>
-        <el-button :loading="quoteLoading" @click="refreshQuotes">
-          <Icon icon="ep:trend-charts" class="mr-5px" />
-          刷新行情
-        </el-button>
-        <el-tooltip content="重新加载持仓、清仓和账户数据" placement="top">
-          <el-button circle :loading="loading" aria-label="重新加载数据" @click="refreshAll">
-            <Icon icon="ep:refresh" />
-          </el-button>
-        </el-tooltip>
-      </div>
-    </div>
-
-    <div class="portfolio-summary">
-      <section class="summary-metric summary-metric--asset">
-        <div class="summary-metric__label">
-          <span>总资产</span>
-          <el-tooltip content="设置总资产" placement="top">
-            <el-button
-              link
-              type="primary"
-              aria-label="设置总资产"
-              v-hasPermi="['finance:stock-position:update']"
-              @click="openAssetForm"
-            >
-              <Icon icon="ep:edit" />
-            </el-button>
-          </el-tooltip>
-        </div>
-        <strong>{{ formatAmount(summary.totalAsset) }}</strong>
-      </section>
-      <section class="summary-metric summary-metric--cash">
-        <span>可用资产</span>
-        <strong>{{ formatAmount(summary.availableAsset) }}</strong>
-      </section>
-      <section class="summary-metric">
-        <span>持有金额</span>
-        <strong>{{ formatAmount(summary.holdingAmount) }}</strong>
-      </section>
-      <section class="summary-metric" :class="changeClass(summary.holdingProfitLoss)">
-        <span>持有盈亏</span>
-        <strong>{{ formatSignedAmount(summary.holdingProfitLoss) }}</strong>
-      </section>
-      <section class="summary-metric" :class="changeClass(summary.dailyProfitLoss)">
-        <span>当日盈亏</span>
-        <strong>{{ formatSignedAmount(summary.dailyProfitLoss) }}</strong>
-      </section>
-      <section class="summary-metric">
-        <span>仓位占比</span>
-        <strong>{{ formatPercent(summary.positionRatio) }}</strong>
-      </section>
-      <section class="summary-metric">
-        <span>上涨 / 下跌</span>
-        <strong>{{ summary.risingCount }} / {{ summary.fallingCount }}</strong>
-      </section>
-      <section class="summary-metric">
-        <span>持仓股票</span>
-        <strong>{{ summary.positionCount }}</strong>
-      </section>
-    </div>
+    <StockPortfolioOverview
+      :summary="summary"
+      :loading="loading"
+      :quote-loading="quoteLoading"
+      :snapshot-saving="assetSnapshotSaving"
+      :snapshot-loading="assetSnapshotLoading"
+      @create="openCreate"
+      @import="importDialogRef?.open()"
+      @refresh-quotes="refreshQuotes"
+      @save-snapshot="saveCurrentAssetSnapshot"
+      @open-history="openAssetSnapshotHistory"
+      @refresh="refreshAll"
+      @edit-asset="openAssetForm"
+    />
   </ContentWrap>
 
   <ContentWrap>
@@ -521,6 +448,7 @@
             end-placeholder="清仓结束日期"
             range-separator="至"
             unlink-panels
+            :shortcuts="financeDateRangeShortcuts"
           />
           <div class="toolbar-spacer"></div>
           <span class="result-context">共 {{ filteredClosedRows.length }} 条清仓记录</span>
@@ -692,6 +620,7 @@
             end-placeholder="成交结束日期"
             range-separator="至"
             unlink-panels
+            :shortcuts="financeDateRangeShortcuts"
             @change="handleTradeQuery"
           />
           <el-button type="primary" @click="handleTradeQuery">
@@ -759,11 +688,7 @@
             sortable="custom"
           >
             <template #default="{ row }">
-              <el-tag
-                :type="tradeTypeTagTypes[row.tradeType]"
-                effect="plain"
-                size="small"
-              >
+              <el-tag :type="tradeTypeTagTypes[row.tradeType]" effect="plain" size="small">
                 {{ tradeTypeLabels[row.tradeType] }}
               </el-tag>
             </template>
@@ -887,6 +812,7 @@
           value-format="YYYY-MM-DD"
           :clearable="false"
           :disabled-date="disableFutureDate"
+          :shortcuts="financeDateShortcuts"
         />
       </el-form-item>
       <el-form-item label="备注" prop="remark">
@@ -932,6 +858,12 @@
     </template>
   </el-dialog>
 
+  <StockAssetSnapshotDialog
+    v-model="assetSnapshotVisible"
+    :snapshots="assetSnapshots"
+    :loading="assetSnapshotLoading"
+  />
+
   <StockPortfolioImportDialog ref="importDialogRef" @success="handleImportSuccess" />
   <StockDetailDrawer ref="detailRef" @changed="refreshAll" />
 </template>
@@ -943,7 +875,12 @@ import { Search } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { FinanceMarket, MarketDataStatus, StockApi, StockTrackVO } from '@/api/finance/stock'
 import {
+  financeDateRangeShortcuts,
+  financeDateShortcuts
+} from '@/views/finance/utils/dateShortcuts'
+import {
   StockClosedPositionVO,
+  StockPositionAssetSnapshotVO,
   StockPositionAccountVO,
   StockPositionApi,
   StockPositionCreateVO,
@@ -958,7 +895,11 @@ import {
   StockTradeType
 } from '@/api/finance/stock/trade-record'
 import StockDetailDrawer from '../components/StockDetailDrawer.vue'
+import StockWorkspaceNav from '../components/StockWorkspaceNav.vue'
+import StockAssetSnapshotDialog from './components/StockAssetSnapshotDialog.vue'
 import StockPortfolioImportDialog from './components/StockPortfolioImportDialog.vue'
+import StockPortfolioOverview from './components/StockPortfolioOverview.vue'
+import { useStockWorkspaceCache } from '../composables/useStockWorkspaceCache'
 
 defineOptions({ name: 'FinanceStockPosition' })
 
@@ -1024,10 +965,13 @@ const tradeTypeTagTypes: Record<
   NEW_SHARE_CREDIT: 'primary'
 }
 const loading = ref(false)
+const workspaceCache = useStockWorkspaceCache()
 const quoteLoading = ref(false)
 const tradeLoading = ref(false)
 const submitLoading = ref(false)
 const assetSubmitLoading = ref(false)
+const assetSnapshotSaving = ref(false)
+const assetSnapshotLoading = ref(false)
 const activeTab = ref<ActiveTab>('positions')
 const positionView = ref<PositionView>('overview')
 const positionKeyword = ref('')
@@ -1037,6 +981,8 @@ const rows = ref<PositionRow[]>([])
 const closedRows = ref<StockClosedPositionVO[]>([])
 const tracks = ref<StockTrackVO[]>([])
 const assetAccount = ref<StockPositionAccountVO | null>(null)
+const assetSnapshots = ref<StockPositionAssetSnapshotVO[]>([])
+const assetSnapshotVisible = ref(false)
 const formVisible = ref(false)
 const assetFormVisible = ref(false)
 const formMode = ref<'create' | 'edit'>('create')
@@ -1338,12 +1284,13 @@ const buildPositionRow = (
 const loadData = async () => {
   loading.value = true
   try {
-    const [positionList, closedList, trackList, account] = await Promise.all([
+    const [positionList, closedList, workspaceData, account] = await Promise.all([
       StockPositionApi.getList(),
       StockPositionApi.getClosedList(),
-      StockApi.getTrackList(),
+      workspaceCache.load(),
       StockPositionApi.getAccount()
     ])
+    const trackList = workspaceData.tracks
     tracks.value = trackList
     closedRows.value = closedList
     assetAccount.value = account
@@ -1491,6 +1438,32 @@ const submitAssetAccount = async () => {
   }
 }
 
+const saveCurrentAssetSnapshot = async () => {
+  assetSnapshotSaving.value = true
+  try {
+    const snapshot = await StockPositionApi.saveCurrentAssetSnapshot()
+    const existingIndex = assetSnapshots.value.findIndex(
+      (item) => item.snapshotDate === snapshot.snapshotDate
+    )
+    if (existingIndex >= 0) assetSnapshots.value.splice(existingIndex, 1, snapshot)
+    else assetSnapshots.value.push(snapshot)
+    assetSnapshots.value.sort((left, right) => left.snapshotDate.localeCompare(right.snapshotDate))
+    message.success(`已保存 ${snapshot.snapshotDate} 账户资产快照`)
+  } finally {
+    assetSnapshotSaving.value = false
+  }
+}
+
+const openAssetSnapshotHistory = async () => {
+  assetSnapshotVisible.value = true
+  assetSnapshotLoading.value = true
+  try {
+    assetSnapshots.value = await StockPositionApi.getAssetSnapshotTrend()
+  } finally {
+    assetSnapshotLoading.value = false
+  }
+}
+
 const submitPosition = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
   if (
@@ -1517,6 +1490,7 @@ const submitPosition = async () => {
       message.success('持仓已更新')
     }
     formVisible.value = false
+    workspaceCache.invalidate()
     await loadData()
   } finally {
     submitLoading.value = false
@@ -1526,12 +1500,14 @@ const submitPosition = async () => {
 const handleDelete = async (row: PositionRow) => {
   await message.delConfirm(`确定删除“${row.name}（${row.symbol}）”的持仓记录吗？`)
   await StockPositionApi.delete(row.id)
+  workspaceCache.invalidate()
   message.success('持仓已删除')
   await loadData()
 }
 
 const handleImportSuccess = async () => {
   tradesLoaded.value = false
+  workspaceCache.invalidate()
   await loadData()
   if (activeTab.value === 'trades') await loadTrades()
 }
@@ -1670,109 +1646,11 @@ onMounted(loadData)
 </script>
 
 <style scoped>
-.portfolio-header,
-.portfolio-title,
-.portfolio-actions,
 .view-toolbar,
-.summary-metric__label,
 .row-actions,
 .source-state {
   display: flex;
   align-items: center;
-}
-
-.portfolio-header {
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.portfolio-title {
-  min-width: 0;
-  gap: 10px;
-}
-
-.portfolio-title h1 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.3;
-  letter-spacing: 0;
-}
-
-.portfolio-title p {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-
-.portfolio-actions {
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.portfolio-actions .el-button {
-  margin-left: 0;
-}
-
-.portfolio-summary {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin-top: 18px;
-  overflow: hidden;
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 4px;
-}
-
-.summary-metric {
-  display: flex;
-  min-width: 0;
-  min-height: 74px;
-  padding: 12px 16px;
-  flex-direction: column;
-  justify-content: center;
-  border-top: 1px solid var(--el-border-color-lighter);
-  border-left: 1px solid var(--el-border-color-lighter);
-}
-
-.summary-metric:nth-child(-n + 4) {
-  border-top: 0;
-}
-
-.summary-metric:nth-child(4n + 1) {
-  border-left: 0;
-}
-
-.summary-metric--asset {
-  box-shadow: inset 0 3px var(--el-color-primary);
-}
-
-.summary-metric--cash {
-  box-shadow: inset 0 3px #2c8c73;
-}
-
-.summary-metric > span,
-.summary-metric__label {
-  margin-bottom: 5px;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-
-.summary-metric__label {
-  justify-content: space-between;
-}
-
-.summary-metric__label .el-button {
-  width: 24px;
-  height: 24px;
-  padding: 0;
-}
-
-.summary-metric strong {
-  overflow: hidden;
-  font-size: 19px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
 }
 
 .portfolio-tabs :deep(.el-tabs__header) {
@@ -1922,23 +1800,6 @@ onMounted(loadData)
 }
 
 @media (width <= 900px) {
-  .portfolio-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .summary-metric:nth-child(n) {
-    border-top: 1px solid var(--el-border-color-lighter);
-    border-left: 1px solid var(--el-border-color-lighter);
-  }
-
-  .summary-metric:nth-child(-n + 2) {
-    border-top: 0;
-  }
-
-  .summary-metric:nth-child(2n + 1) {
-    border-left: 0;
-  }
-
   .compact-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1958,19 +1819,6 @@ onMounted(loadData)
 }
 
 @media (width <= 720px) {
-  .portfolio-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .portfolio-actions {
-    justify-content: flex-start;
-  }
-
-  .portfolio-actions .el-button:not(.is-circle) {
-    flex: 1 1 auto;
-  }
-
   .view-toolbar {
     align-items: stretch;
   }

@@ -47,6 +47,7 @@
               placeholder="开始日期"
               clearable
               :disabled-date="disableTrackingStartDate"
+              :shortcuts="financeDateShortcuts"
             />
             <span class="tracking-period__separator">至</span>
             <el-date-picker
@@ -56,6 +57,7 @@
               placeholder="持续跟踪"
               clearable
               :disabled-date="disableTrackingEndDate"
+              :shortcuts="trackingEndDateShortcuts"
             />
             <el-button
               type="primary"
@@ -200,6 +202,7 @@
             end-placeholder="结束日期"
             range-separator="至"
             clearable
+            :shortcuts="financeDateRangeShortcuts"
           />
           <el-button type="primary" :loading="chartLoading" @click="loadChart">
             <Icon icon="ep:search" class="mr-5px" />
@@ -530,6 +533,11 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
 import {
+  filterFinanceDateShortcuts,
+  financeDateRangeShortcuts,
+  financeDateShortcuts
+} from '@/views/finance/utils/dateShortcuts'
+import {
   FinanceMarket,
   MarketDataResult,
   PagedResult,
@@ -621,7 +629,8 @@ const informationOptions = [
 
 const informationTypeLabels: Record<StockInformationType, string> = {
   NEWS: '新闻',
-  ANNOUNCEMENT: '公告'
+  ANNOUNCEMENT: '公告',
+  RESEARCH: '研报'
 }
 
 const dailyPriceSourceLabels: Record<StockDailyPriceSource, string> = {
@@ -704,6 +713,7 @@ const disableTrackingEndDate = (date: Date) =>
   !trackingPeriodForm.trackingStartDate ||
   disableTrackingStartDate(date) ||
   dayjs(date).isBefore(dayjs(trackingPeriodForm.trackingStartDate), 'day')
+const trackingEndDateShortcuts = computed(() => filterFinanceDateShortcuts(disableTrackingEndDate))
 
 watch(
   () => trackingPeriodForm.trackingStartDate,

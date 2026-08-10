@@ -2,7 +2,7 @@ import request from '@/config/axios'
 
 export type FinanceMarket = 'SSE' | 'SZSE' | 'BSE'
 export type MarketDataStatus = 'REALTIME' | 'DELAYED' | 'CACHED' | 'UNAVAILABLE'
-export type StockInformationType = 'NEWS' | 'ANNOUNCEMENT'
+export type StockInformationType = 'NEWS' | 'ANNOUNCEMENT' | 'RESEARCH'
 export type StockTradingStatus = 'TRADING' | 'CLOSED' | 'SUSPENDED' | 'NOT_OPEN' | 'UNAVAILABLE'
 export type StockDailyPriceSource = 'MANUAL' | 'EASTMONEY' | 'TENCENT'
 
@@ -100,12 +100,26 @@ export interface StockGroupAssignVO {
   groupIds: number[]
 }
 
+export type StockGroupBatchAssignMode = 'ADD' | 'REMOVE'
+
+export interface StockGroupBatchAssignVO {
+  trackIds: number[]
+  groupIds: number[]
+  mode: StockGroupBatchAssignMode
+}
+
 export interface StockTagVO {
   id: number
   name: string
   color: string
   sort: number
   createTime: string
+}
+
+export interface StockWorkspaceBootstrapVO {
+  groups: StockGroupVO[]
+  tags: StockTagVO[]
+  tracks: StockTrackVO[]
 }
 
 export interface StockTagCreateVO {
@@ -300,6 +314,8 @@ export interface StockCapabilityFactVO {
   validTradingDays: number
   currentDailyChangePercent: number | null
   currentDailyResult: StockStatisticsResult | null
+  latestDailyDate: string | null
+  latestDailyChangePercent: number | null
   tracking5ChangePercent: number | null
   tracking5Result: StockStatisticsResult | null
   tracking10ChangePercent: number | null
@@ -623,6 +639,9 @@ export const StockApi = {
       params
     }),
 
+  getWorkspaceBootstrap: () =>
+    request.get<StockWorkspaceBootstrapVO>({ url: '/finance/stock-workspace/bootstrap' }),
+
   getTrackList: () => request.get<StockTrackVO[]>({ url: '/finance/stock-track/list' }),
 
   createTrack: (data: StockTrackCreateVO) =>
@@ -653,6 +672,9 @@ export const StockApi = {
 
   assignTrackGroups: (data: StockGroupAssignVO) =>
     request.put<boolean>({ url: '/finance/stock-group/assign', data }),
+
+  assignTrackGroupsBatch: (data: StockGroupBatchAssignVO) =>
+    request.put<boolean>({ url: '/finance/stock-group/assign-batch', data }),
 
   getTagList: () => request.get<StockTagVO[]>({ url: '/finance/stock-tag/list' }),
 

@@ -590,15 +590,22 @@
       <el-table-column
         prop="currentDailyChangePercent"
         label="当日涨幅"
-        width="108"
+        width="124"
         align="right"
         sortable="custom"
       >
-        <template #default="{ row }"
-          ><span :class="changeClass(row.currentDailyChangePercent)">{{
-            formatPercent(row.currentDailyChangePercent)
-          }}</span></template
-        >
+        <template #default="{ row }">
+          <div class="daily-change-cell">
+            <span :class="changeClass(displayDailyChange(row))">
+              {{ formatPercent(displayDailyChange(row)) }}
+            </span>
+            <small
+              v-if="row.currentDailyChangePercent === null && row.latestDailyChangePercent !== null"
+            >
+              {{ row.latestDailyDate }}
+            </small>
+          </div>
+        </template>
       </el-table-column>
       <el-table-column
         prop="tracking5ChangePercent"
@@ -1110,6 +1117,9 @@ const compareFactRows = (
   sort: DetailSort
 ) => {
   if (!sort.order) return 0
+  if (sort.prop === 'currentDailyChangePercent') {
+    return compareNumber(displayDailyChange(left), displayDailyChange(right), sort.order)
+  }
   if (sort.prop === 'groupNames') {
     return compareText(left.groupNames.join('、'), right.groupNames.join('、'), sort.order)
   }
@@ -1151,6 +1161,9 @@ const compareFactRows = (
 
 const formatPercent = (value?: number | null) =>
   value === undefined || value === null ? '--' : `${value.toFixed(2)}%`
+
+const displayDailyChange = (fact: StockCapabilityFactVO) =>
+  fact.currentDailyChangePercent ?? fact.latestDailyChangePercent
 
 const formatPoints = (value?: number | null) =>
   value === undefined || value === null
@@ -1540,6 +1553,20 @@ defineExpose({ refresh: reload })
 
 .detail-filters :deep(.el-select) {
   width: 130px;
+}
+
+.daily-change-cell {
+  display: flex;
+  min-height: 38px;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  line-height: 18px;
+}
+
+.daily-change-cell small {
+  font-size: 10px;
+  color: var(--el-text-color-placeholder);
 }
 
 .price-up {

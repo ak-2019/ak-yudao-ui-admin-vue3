@@ -1,4 +1,5 @@
 <template>
+  <StockWorkspaceNav />
   <ContentWrap>
     <div class="workspace-heading">
       <div>
@@ -36,6 +37,7 @@
         end-placeholder="结束日期"
         range-separator="至"
         clearable
+        :shortcuts="financeDateRangeShortcuts"
         @change="handleDateRangeChange"
       />
       <el-button type="primary" :loading="loading" @click="handleSearch">
@@ -128,6 +130,8 @@
     :as-of-date="latestSnapshot?.snapshotDate"
     :refresh-key="capabilityRefreshKey"
   />
+
+  <StockAccountSnapshotPanel />
 
   <ContentWrap>
     <div class="section-heading">
@@ -592,6 +596,7 @@ import dayjs from 'dayjs'
 import type { EChartsOption } from 'echarts'
 import type { ECElementEvent } from 'echarts/core'
 import { Search } from '@element-plus/icons-vue'
+import { financeDateRangeShortcuts } from '@/views/finance/utils/dateShortcuts'
 import StockCapabilityAnalysisPanel from './components/StockCapabilityAnalysisPanel.vue'
 import {
   StockApi,
@@ -601,6 +606,8 @@ import {
   StockStatisticsTrendParams,
   StockStatisticsType
 } from '@/api/finance/stock'
+import StockWorkspaceNav from '../components/StockWorkspaceNav.vue'
+import StockAccountSnapshotPanel from './components/StockAccountSnapshotPanel.vue'
 
 defineOptions({ name: 'FinanceStockStatistics' })
 

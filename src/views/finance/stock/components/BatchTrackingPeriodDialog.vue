@@ -15,6 +15,7 @@
             value-format="YYYY-MM-DD"
             placeholder="选择开始跟踪日期"
             :disabled-date="disableFutureDate"
+            :shortcuts="financeDateShortcuts"
             class="period-date-picker"
           />
         </el-form-item>
@@ -26,6 +27,7 @@
             placeholder="不填表示持续跟踪"
             clearable
             :disabled-date="disableEndDate"
+            :shortcuts="trackingEndDateShortcuts"
             class="period-date-picker"
           />
         </el-form-item>
@@ -51,6 +53,10 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
 import { StockApi, type StockTrackVO } from '@/api/finance/stock'
+import {
+  filterFinanceDateShortcuts,
+  financeDateShortcuts
+} from '@/views/finance/utils/dateShortcuts'
 
 defineOptions({ name: 'FinanceStockBatchTrackingPeriodDialog' })
 
@@ -142,6 +148,7 @@ const disableFutureDate = (date: Date) => date.getTime() > Date.now()
 const disableEndDate = (date: Date) =>
   disableFutureDate(date) ||
   Boolean(trackingStartDate.value && dayjs(date).isBefore(trackingStartDate.value, 'day'))
+const trackingEndDateShortcuts = computed(() => filterFinanceDateShortcuts(disableEndDate))
 
 defineExpose({ open })
 </script>

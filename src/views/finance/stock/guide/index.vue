@@ -1,4 +1,5 @@
 <template>
+  <StockWorkspaceNav />
   <ContentWrap>
     <div class="guide-header">
       <div class="guide-header__content">
@@ -342,6 +343,8 @@
 </template>
 
 <script setup lang="ts">
+import StockWorkspaceNav from '../components/StockWorkspaceNav.vue'
+
 defineOptions({ name: 'FinanceStockGuide' })
 
 type GuideTagType = 'primary' | 'success' | 'warning' | 'info' | 'danger'
@@ -392,7 +395,7 @@ const stockWorkflow: WorkflowStep[] = [
   {
     title: '添加个股池',
     description:
-      '按代码、名称或拼音搜索本地股票池和真实行情，可选择多只候选，确认目标分组后逐股添加并查看结果。'
+      '按代码、名称或拼音搜索本地股票池和真实行情，也可上传截图识别 A 股代码和名称；确认目标分组后逐股添加并查看结果。'
   },
   {
     title: '设置跟踪范围',
@@ -610,7 +613,8 @@ const stockOperations: OperationGuide[] = [
     area: '搜索区',
     name: '添加个股池',
     prerequisite: '已选择一只或多只未跟踪股票，并具备新增权限',
-    operation: '点击“添加个股池”，核对目标分组和股票清单后确认；失败项可在结果弹窗中重试。',
+    operation:
+      '点击“添加个股池”或“识图添加”，核对候选、目标分组和股票清单后确认；失败项可在结果弹窗中重试。',
     effect:
       '逐只写入或复用股票主数据并自动补全地域行业，单只失败不阻断其余股票；新增股票默认未设置跟踪日期。',
     type: 'primary'
@@ -621,15 +625,17 @@ const stockOperations: OperationGuide[] = [
     prerequisite: '列表中存在可操作股票',
     operation: '勾选表格左侧选择框，可同时选择多只股票。',
     effect:
-      '勾选后显示选择上下文操作条，集中提供更新价格、设置或清空日期、同步地域行业和取消选择。',
+      '勾选后显示选择上下文操作条，集中提供设置或清空日期、设置标签和取消选择；“数据同步”会自动优先使用已选范围。',
     type: 'warning'
   },
   {
-    area: '批量区',
-    name: '批量更新价格',
-    prerequisite: '至少勾选一只股票，并具备价格新增权限',
-    operation: '选择日期区间并开始更新；系统按股票顺序获取行情，可确认覆盖已有手工记录。',
-    effect: '逐股显示获取、新增、更新、量能回填、跳过和失败数量；单只失败不会阻断其余股票。',
+    area: '列表工具',
+    name: '数据同步',
+    prerequisite: '具备对应的行情、股票主数据或资讯查询权限',
+    operation:
+      '点击“数据同步”选择“同步行情技术”“同步地域行业”或“同步资讯公告研报”。有勾选时行情技术和地域行业优先处理已选股票；未勾选时行情技术同步当前分组，地域行业同步全部股票并二次确认；资讯、公告和研报始终同步当前分组。',
+    effect:
+      '三类操作使用独立接口：行情技术逐股显示新增、更新、量能回填、跳过和失败；地域行业回写省份、城市和行业；资讯、公告与研报分别增量持久化并刷新当前分组的本地结果。',
     type: 'warning'
   },
   {
@@ -649,16 +655,6 @@ const stockOperations: OperationGuide[] = [
     effect:
       '新名称由后端在同一事务中创建并完成分配；移除模式只选择已有标签，失败不会留下半完成标签。',
     type: 'primary'
-  },
-  {
-    area: '资料区',
-    name: '同步地域行业',
-    prerequisite: '具备股票主数据修改权限，外部资料源可用',
-    operation:
-      '有勾选时在选择操作条同步勾选股票；同步全部时从顶部“更多”菜单选择“同步全部地域行业”并确认。',
-    effect:
-      '按确认范围回写省份、城市和行业；取消确认不会发起请求，供应商空值不会覆盖数据库已有非空值。',
-    type: 'success'
   },
   {
     area: '资料区',
@@ -718,19 +714,12 @@ const stockOperations: OperationGuide[] = [
   },
   {
     area: '分组区',
-    name: '同步技术数据',
-    prerequisite: '当前分组存在股票，并具备价格新增权限',
-    operation: '点击分组选项卡右侧“同步技术数据”，确认日期区间后按股票顺序同步。',
-    effect:
-      '默认同步约一年的 OHLCV 并回填缺失成交量；手工 OHLC 默认保留，均线、MACD 和 KDJ 在前端基于本地数据即时计算。',
-    type: 'warning'
-  },
-  {
-    area: '分组区',
-    name: '资讯公告',
+    name: '资讯公告研报',
     prerequisite: '当前分组存在股票，外部资讯源可用',
-    operation: '切换到“资讯公告”，选择资讯或公告，可按股票、标题、来源和摘要搜索并刷新。',
-    effect: '最多三只股票并行加载并按发布时间倒序聚合；单只失败会独立标记，不影响其他股票结果。',
+    operation:
+      '切换到“资讯公告研报”，选择资讯、公告或研报，可按股票、标题、来源/机构、作者和摘要搜索并刷新。',
+    effect:
+      '读取当前分组已持久化的数据并按发布时间或报告日期倒序分页，切换分类不会逐股请求外部接口。',
     type: 'info'
   },
   {
@@ -739,6 +728,15 @@ const stockOperations: OperationGuide[] = [
     prerequisite: '具备跟踪修改权限',
     operation: '点击行内“分组”，勾选该股票所属的一个或多个分组并保存。',
     effect: '持久化多分组关系并刷新选项卡数量和当前列表。',
+    type: 'primary'
+  },
+  {
+    area: '批量操作',
+    name: '批量分组',
+    prerequisite: '勾选一只或多只股票并具备跟踪修改权限',
+    operation: '点击“批量分组”，选择“加入分组”或“移出分组”，根据覆盖数量勾选自选或用户分组后确认。',
+    effect:
+      '一次增量更新所选股票的分组关系，不覆盖未选择的其他分组；所有个股和持仓关系继续由系统维护。',
     type: 'primary'
   },
   {
@@ -864,11 +862,11 @@ const stockDetailCapabilities: CapabilityGuide[] = [
     type: 'success'
   },
   {
-    area: '资讯公告',
+    area: '资讯公告研报',
     content:
-      '详情内展示单股新闻公告；股票页分组视图聚合当前分组的股票、发布时间、来源、类型、标题和摘要。',
-    actions: '切换新闻/公告分类、按关键字筛选、刷新列表，点击链接图标安全打开原文。',
-    note: '分组聚合最多三路并发，单股失败不清空其他结果；成功无数据与供应商不可用会分别展示。',
+      '详情内展示单股新闻公告和外部研报；股票页分组视图聚合当前分组的资讯、公告和已同步研报。',
+    actions: '切换资讯/公告/研报分类、按关键字筛选、刷新列表，点击链接图标安全打开原文。',
+    note: '分组视图读取本地持久化结果；研报中的机构、评级和作者与资讯公告保持相同表格风格。',
     type: 'info'
   },
   {

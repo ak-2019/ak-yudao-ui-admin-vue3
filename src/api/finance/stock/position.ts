@@ -104,6 +104,24 @@ export interface StockPositionAccountSaveVO {
   totalAsset: string
 }
 
+export interface StockPositionAssetSnapshotVO {
+  id: number
+  snapshotDate: string
+  totalAsset: number
+  holdingAsset: number
+  availableAsset: number
+  dailyProfitLoss: number | null
+  dailyProfitRate: number | null
+  netValue: number | null
+  cumulativeReturnRate: number | null
+  maxDrawdownRate: number | null
+  positionCount: number
+  missingValuationCount: number
+  positionSnapshotJson: string | null
+  source: string
+  updateTime: string
+}
+
 export const StockPositionApi = {
   getList: () => request.get<StockPositionVO[]>({ url: '/finance/stock-position/list' }),
 
@@ -135,5 +153,16 @@ export const StockPositionApi = {
     request.get<StockPositionAccountVO | null>({ url: '/finance/stock-position-account/get' }),
 
   saveAccount: (data: StockPositionAccountSaveVO) =>
-    request.put<boolean>({ url: '/finance/stock-position-account/save', data })
+    request.put<boolean>({ url: '/finance/stock-position-account/save', data }),
+
+  saveCurrentAssetSnapshot: () =>
+    request.post<StockPositionAssetSnapshotVO>({
+      url: '/finance/stock-position-account/snapshot/save-current'
+    }),
+
+  getAssetSnapshotTrend: (params?: { beginDate?: string; endDate?: string }) =>
+    request.get<StockPositionAssetSnapshotVO[]>({
+      url: '/finance/stock-position-account/snapshot/trend',
+      params
+    })
 }

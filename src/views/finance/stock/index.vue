@@ -1,279 +1,58 @@
 <template>
+  <StockWorkspaceNav />
   <ContentWrap>
-    <div class="workspace-heading">
-      <div class="workspace-heading__main">
-        <div class="workspace-title-row">
-          <h2>股票工作台</h2>
-          <el-tag v-if="activeGroup" type="info" effect="plain">{{ activeGroup.name }}</el-tag>
-        </div>
-        <div class="workspace-context">
-          <span>{{ activeGroupTracks.length }} 只个股</span>
-          <span>{{ activeTrackingCount }} 只持续跟踪</span>
-          <span v-if="activeGroupQuoteIssueCount > 0" class="workspace-context--warning">
-            {{ activeGroupQuoteIssueCount }} 只行情异常
-          </span>
-        </div>
-      </div>
-      <div class="workspace-heading__actions">
-        <el-tooltip content="维护标签库中的名称、颜色和排序" placement="top">
-          <el-button v-if="canUpdateGroup" @click="stockTagManageRef?.open()">
-            <Icon icon="ep:price-tag" class="mr-5px" />
-            标签管理
-          </el-button>
-        </el-tooltip>
-        <el-dropdown v-if="canSyncStockProfile" trigger="click" @command="handleToolbarCommand">
-          <el-button>
-            <Icon icon="ep:more-filled" class="mr-5px" />
-            更多
-            <Icon icon="ep:arrow-down" class="ml-5px" />
-          </el-button>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item command="sync-all" :disabled="syncIndustryLoading">
-                <Icon icon="ep:connection" class="mr-5px" />
-                同步全部地域行业
-              </el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
-        <el-tooltip content="刷新跟踪列表" placement="top">
-          <el-button :loading="loading" circle aria-label="刷新跟踪列表" @click="getList">
-            <Icon icon="ep:refresh" />
-          </el-button>
-        </el-tooltip>
-      </div>
-    </div>
+    <StockWorkspaceHeader
+      v-model:selected-keys="selectedStockKeys"
+      :active-group-name="activeGroup?.name"
+      :stock-count="activeGroupTracks.length"
+      :active-tracking-count="activeTrackingCount"
+      :quote-issue-count="activeGroupQuoteIssueCount"
+      :can-manage-tags="canUpdateGroup"
+      :loading="loading"
+      :search-loading="searchLoading"
+      :search-hint="stockSearchHint"
+      :search-options="searchOptions"
+      @manage-tags="stockTagManageRef?.open()"
+      @refresh="getList"
+      @search="searchStocks"
+      @add="openStockPoolAdd"
+      @image-add="stockImageAddRef?.open()"
+    />
 
-    <div class="stock-add-bar">
-      <div class="stock-search-wrap">
-        <el-select
-          v-model="selectedStockKeys"
-          class="stock-search"
-          clearable
-          filterable
-          remote
-          reserve-keyword
-          multiple
-          collapse-tags
-          collapse-tags-tooltip
-          :max-collapse-tags="2"
-          :remote-method="searchStocks"
-          :loading="searchLoading"
-          placeholder="输入股票代码、名称或拼音，搜索本地及真实行情"
-          @keyup.enter="openStockPoolAdd"
-        >
-          <el-option
-            v-for="stock in searchOptions"
-            :key="stock.key"
-            :label="`${stock.name}（${stock.symbol}）`"
-            :value="stock.key"
-            :disabled="stock.disabled"
-          >
-            <div class="stock-option">
-              <div class="stock-option__main">
-                <span>{{ stock.name }}</span>
-                <el-tag
-                  :type="stock.source === 'local' ? 'info' : 'warning'"
-                  size="small"
-                  effect="plain"
-                >
-                  {{ stock.source === 'local' ? '本地股票池' : '真实行情' }}
-                </el-tag>
-                <el-tag v-if="stock.tracked" type="success" size="small" effect="plain">
-                  已跟踪
-                </el-tag>
-                <el-tag
-                  v-else-if="stock.source === 'market' && stock.local"
-                  type="info"
-                  size="small"
-                  effect="plain"
-                >
-                  已入库
-                </el-tag>
-              </div>
-              <span class="stock-option__meta">
-                {{ stock.symbol }} · {{ stock.marketName
-                }}<template v-if="stock.provider"> · {{ stock.provider }}</template>
-              </span>
-            </div>
-          </el-option>
-        </el-select>
-        <span v-if="stockSearchHint" class="stock-search-hint">{{ stockSearchHint }}</span>
-      </div>
-      <el-button
-        type="primary"
-        :disabled="selectedStockKeys.length === 0"
-        v-hasPermi="['finance:stock-track:create']"
-        @click="openStockPoolAdd"
-      >
-        <Icon icon="ep:plus" class="mr-5px" />
-        添加个股池<span v-if="selectedStockKeys.length > 0"
-          >（{{ selectedStockKeys.length }}）</span
-        >
-      </el-button>
-    </div>
+    <StockFilterPanel
+      v-model:expanded="filterExpanded"
+      v-model:province="selectedProvince"
+      v-model:city="selectedCity"
+      v-model:industry="selectedIndustry"
+      v-model:tag-ids="selectedTagIds"
+      v-model:tag-mode="tagMatchMode"
+      v-model:date-range="trackingDateRange"
+      :advanced-filter-count="advancedFilterCount"
+      :active-filter-chips="activeFilterChips"
+      :has-list-filters="hasListFilters"
+      :province-options="provinceOptions"
+      :city-options="cityOptions"
+      :industry-options="industryOptions"
+      :tags="tags"
+      :tag-match-options="tagMatchOptions"
+      :date-shortcuts="financeDateRangeShortcuts"
+      @clear-chip="clearFilterChip"
+      @reset="resetFilters"
+    />
 
-    <div class="filter-command-row">
-      <div class="filter-command-main">
-        <el-badge :value="advancedFilterCount" :hidden="advancedFilterCount === 0">
-          <el-button
-            :type="filterExpanded || advancedFilterCount > 0 ? 'primary' : undefined"
-            :plain="advancedFilterCount === 0"
-            @click="filterExpanded = !filterExpanded"
-          >
-            <Icon icon="ep:filter" class="mr-5px" />
-            筛选
-            <Icon :icon="filterExpanded ? 'ep:arrow-up' : 'ep:arrow-down'" class="ml-5px" />
-          </el-button>
-        </el-badge>
-        <div v-if="activeFilterChips.length > 0" class="active-filter-chips">
-          <el-tag
-            v-for="chip in activeFilterChips"
-            :key="chip.key"
-            closable
-            effect="plain"
-            @close="clearFilterChip(chip.key)"
-          >
-            {{ chip.label }}
-          </el-tag>
-        </div>
-        <span v-else class="filter-command-empty">当前未限定地域、行业、标签或日期</span>
-      </div>
-      <el-button v-if="hasListFilters" link type="primary" @click="resetFilters">
-        清空全部
-      </el-button>
-    </div>
-
-    <el-collapse-transition>
-      <div v-show="filterExpanded" class="filter-panel">
-        <el-select
-          v-model="selectedProvince"
-          class="filter-select"
-          clearable
-          filterable
-          placeholder="全部省份"
-        >
-          <el-option
-            v-for="province in provinceOptions"
-            :key="province"
-            :label="province"
-            :value="province"
-          />
-        </el-select>
-        <el-select
-          v-model="selectedCity"
-          class="filter-select"
-          clearable
-          filterable
-          placeholder="全部城市"
-        >
-          <el-option v-for="city in cityOptions" :key="city" :label="city" :value="city" />
-        </el-select>
-        <el-select
-          v-model="selectedIndustry"
-          class="filter-select filter-select--industry"
-          clearable
-          filterable
-          placeholder="全部行业"
-        >
-          <el-option
-            v-for="industry in industryOptions"
-            :key="industry"
-            :label="industry"
-            :value="industry"
-          />
-        </el-select>
-        <el-select
-          v-model="selectedTagIds"
-          class="filter-tags"
-          multiple
-          clearable
-          collapse-tags
-          collapse-tags-tooltip
-          :max-collapse-tags="2"
-          placeholder="全部标签"
-        >
-          <el-option v-for="tag in tags" :key="tag.id" :label="tag.name" :value="tag.id">
-            <span class="tag-option-dot" :style="{ backgroundColor: tag.color }"></span>
-            <span>{{ tag.name }}</span>
-          </el-option>
-        </el-select>
-        <el-segmented
-          v-model="tagMatchMode"
-          :options="tagMatchOptions"
-          :disabled="selectedTagIds.length === 0"
-          class="tag-match-mode"
-        />
-        <el-date-picker
-          v-model="trackingDateRange"
-          class="filter-date-range"
-          type="daterange"
-          value-format="YYYY-MM-DD"
-          range-separator="至"
-          start-placeholder="跟踪开始日期"
-          end-placeholder="跟踪结束日期"
-          unlink-panels
-        />
-      </div>
-    </el-collapse-transition>
-
-    <div class="statistics-workbench">
-      <div class="statistics-primary">
-        <span>全账户综合成功率</span>
-        <strong :class="changeClass(globalStatistics?.winRate)">
-          {{ formatPercent(globalStatistics?.winRate) }}
-        </strong>
-        <small>{{ globalStatistics?.sampleCount ?? 0 }} 只有效股票</small>
-      </div>
-      <div class="statistics-distribution">
-        <div class="distribution-heading">
-          <span>最终累计结果</span>
-          <span>{{ statisticsTotal }} 只</span>
-        </div>
-        <div class="distribution-counts">
-          <span class="price-up">上涨 {{ globalStatistics?.winCount ?? 0 }}</span>
-          <span class="price-down">下跌 {{ globalStatistics?.lossCount ?? 0 }}</span>
-          <span class="price-flat">平盘 {{ globalStatistics?.flatCount ?? 0 }}</span>
-        </div>
-        <div class="distribution-bar" aria-hidden="true">
-          <span
-            class="distribution-bar__win"
-            :style="{ width: `${statisticsDistribution.win}%` }"
-          ></span>
-          <span
-            class="distribution-bar__loss"
-            :style="{ width: `${statisticsDistribution.loss}%` }"
-          ></span>
-          <span
-            class="distribution-bar__flat"
-            :style="{ width: `${statisticsDistribution.flat}%` }"
-          ></span>
-        </div>
-      </div>
-      <div class="statistics-context-grid">
-        <div class="context-metric">
-          <span>当前显示</span>
-          <strong>{{ displayList.length }}</strong>
-        </div>
-        <div class="context-metric">
-          <span>持续跟踪</span>
-          <strong>{{ visibleActiveTrackingCount }}</strong>
-        </div>
-        <div class="context-metric">
-          <span>平均累计涨幅</span>
-          <strong :class="changeClass(visibleAverageCumulativeChange)">
-            {{ formatPercent(visibleAverageCumulativeChange) }}
-          </strong>
-        </div>
-        <div
-          class="context-metric"
-          :class="{ 'context-metric--warning': visibleQuoteIssueCount > 0 }"
-        >
-          <span>行情异常</span>
-          <strong>{{ visibleQuoteIssueCount }}</strong>
-        </div>
-      </div>
-    </div>
+    <StockStatisticsSummary
+      :win-rate="globalStatistics?.winRate"
+      :sample-count="globalStatistics?.sampleCount ?? 0"
+      :win-count="globalStatistics?.winCount ?? 0"
+      :loss-count="globalStatistics?.lossCount ?? 0"
+      :flat-count="globalStatistics?.flatCount ?? 0"
+      :total="statisticsTotal"
+      :distribution="statisticsDistribution"
+      :visible-count="displayList.length"
+      :active-tracking-count="visibleActiveTrackingCount"
+      :average-cumulative-change="visibleAverageCumulativeChange"
+      :quote-issue-count="visibleQuoteIssueCount"
+    />
   </ContentWrap>
 
   <ContentWrap>
@@ -387,16 +166,56 @@
             </div>
           </div>
         </el-popover>
-        <el-tooltip content="同步当前分组技术数据" placement="top">
-          <el-button
-            v-if="canSyncTechnicalData"
-            :disabled="activeGroupTracks.length === 0"
-            @click="openGroupTechnicalSync"
-          >
-            <Icon icon="ep:download" class="mr-5px" />
-            同步技术数据
+        <el-dropdown
+          v-if="canSyncTechnicalData || canSyncStockProfile || canSyncInformation"
+          trigger="click"
+          :disabled="dataSyncDisabled"
+          @command="handleDataSyncCommand"
+        >
+          <el-button :loading="syncIndustryLoading || syncInformationLoading">
+            <Icon icon="ep:refresh" class="mr-5px" />
+            数据同步
+            <Icon icon="ep:arrow-down" class="ml-5px" />
           </el-button>
-        </el-tooltip>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item
+                v-if="canSyncTechnicalData"
+                command="market"
+                :disabled="marketSyncTracks.length === 0"
+              >
+                <Icon icon="ep:data-line" class="mr-8px" />
+                同步行情技术
+                <el-tag class="ml-8px" size="small" type="info" effect="plain">
+                  {{ marketSyncScopeLabel }}
+                </el-tag>
+              </el-dropdown-item>
+              <el-dropdown-item
+                v-if="canSyncStockProfile"
+                command="profile"
+                :divided="canSyncTechnicalData"
+              >
+                <Icon icon="ep:connection" class="mr-8px" />
+                同步地域行业
+                <el-tag class="ml-8px" size="small" type="info" effect="plain">
+                  {{ profileSyncScopeLabel }}
+                </el-tag>
+              </el-dropdown-item>
+              <el-dropdown-item
+                v-if="canSyncInformation"
+                command="information"
+                :divided="canSyncTechnicalData || canSyncStockProfile"
+                :disabled="activeGroupId === undefined || activeGroupTracks.length === 0"
+              >
+                <Icon icon="ep:document" class="mr-8px" />
+                同步资讯公告研报
+                <el-tag class="ml-8px" size="small" type="info" effect="plain">
+                  {{ informationSyncScopeLabel }}
+                </el-tag>
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </div>
     </div>
 
@@ -407,14 +226,6 @@
         <strong>{{ selectedTracks.length }}</strong> 只已选
       </div>
       <div class="selection-bar__actions">
-        <el-button
-          type="primary"
-          v-hasPermi="['finance:stock-daily-price:create']"
-          @click="openBatchHistoryImport"
-        >
-          <Icon icon="ep:refresh" class="mr-5px" />
-          更新价格
-        </el-button>
         <el-button v-hasPermi="['finance:stock-track:update']" @click="openBatchTrackingPeriod">
           <Icon icon="ep:calendar" class="mr-5px" />
           设置或清空日期
@@ -423,13 +234,9 @@
           <Icon icon="ep:price-tag" class="mr-5px" />
           设置标签
         </el-button>
-        <el-button
-          :loading="syncIndustryLoading"
-          v-hasPermi="['finance:stock:update']"
-          @click="handleSyncIndustry"
-        >
-          <Icon icon="ep:connection" class="mr-5px" />
-          同步地域行业
+        <el-button v-hasPermi="['finance:stock-track:update']" @click="openBatchGroupAssign">
+          <Icon icon="ep:collection-tag" class="mr-5px" />
+          批量分组
         </el-button>
         <el-tooltip content="取消选择" placement="top">
           <el-button circle aria-label="取消选择" @click="clearTrackSelection">
@@ -588,7 +395,7 @@
           </template>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="112" align="center" fixed="right">
+      <el-table-column label="操作" width="142" align="center" fixed="right">
         <template #default="{ row }">
           <div class="row-actions">
             <el-tooltip content="查看股票详情" placement="top">
@@ -600,6 +407,17 @@
                 @click="openDetail(row)"
               >
                 <Icon icon="ep:view" />
+              </el-button>
+            </el-tooltip>
+            <el-tooltip content="AI 单股分析" placement="top">
+              <el-button
+                link
+                type="success"
+                aria-label="AI 单股分析"
+                v-hasPermi="['finance:stock-ai-analysis:generate']"
+                @click="openSingleAi(row)"
+              >
+                <Icon icon="ep:magic-stick" />
               </el-button>
             </el-tooltip>
             <el-dropdown
@@ -638,6 +456,7 @@
       </el-table-column>
     </el-table>
     <GroupInformationPanel
+      ref="groupInformationRef"
       v-else
       :active="groupViewMode === 'information'"
       :group-id="activeGroupId"
@@ -654,9 +473,16 @@
   />
 
   <StockDetailDrawer ref="detailRef" @changed="getList" />
+  <StockAiSingleAnalysisDrawer ref="aiSingleAnalysisRef" />
   <BatchStockPoolAddDialog ref="batchStockPoolAddRef" @finished="handleStockPoolAdded" />
+  <StockImageAddDialog
+    ref="stockImageAddRef"
+    :tracked-symbols="trackedSymbols"
+    @recognized="handleImageCandidates"
+  />
   <BatchHistoryImportDialog ref="batchHistoryImportRef" @success="handleBatchUpdated" />
   <BatchTrackingPeriodDialog ref="batchTrackingPeriodRef" @success="handleBatchUpdated" />
+  <StockGroupBatchAssignDialog ref="stockGroupBatchAssignRef" @success="handleBatchUpdated" />
   <StockTagManageDialog ref="stockTagManageRef" @changed="handleTagsChanged" />
   <StockTagAssignDialog ref="stockTagAssignRef" @success="handleTagsAssigned" />
 
@@ -739,6 +565,7 @@
 import dayjs from 'dayjs'
 import Sortable from 'sortablejs'
 import { checkPermi } from '@/utils/permission'
+import { financeDateRangeShortcuts } from '@/views/finance/utils/dateShortcuts'
 import {
   FinanceMarket,
   MarketDataResult,
@@ -760,9 +587,17 @@ import BatchStockPoolAddDialog, {
 } from './components/BatchStockPoolAddDialog.vue'
 import BatchTrackingPeriodDialog from './components/BatchTrackingPeriodDialog.vue'
 import GroupInformationPanel from './components/GroupInformationPanel.vue'
+import StockGroupBatchAssignDialog from './components/StockGroupBatchAssignDialog.vue'
 import StockDetailDrawer from './components/StockDetailDrawer.vue'
+import StockAiSingleAnalysisDrawer from './components/StockAiSingleAnalysisDrawer.vue'
 import StockTagAssignDialog from './components/StockTagAssignDialog.vue'
 import StockTagManageDialog from './components/StockTagManageDialog.vue'
+import StockFilterPanel from './components/StockFilterPanel.vue'
+import StockImageAddDialog from './components/StockImageAddDialog.vue'
+import StockStatisticsSummary from './components/StockStatisticsSummary.vue'
+import StockWorkspaceHeader from './components/StockWorkspaceHeader.vue'
+import StockWorkspaceNav from './components/StockWorkspaceNav.vue'
+import { useStockWorkspaceCache } from './composables/useStockWorkspaceCache'
 
 defineOptions({ name: 'FinanceStockAnalysis' })
 
@@ -773,6 +608,7 @@ type TagMatchMode = 'ALL' | 'ANY'
 type StockScopeFilter = 'ALL' | 'ACTIVE' | 'UNTRACKED' | 'QUOTE_ISSUE'
 type TableDensity = 'compact' | 'standard'
 type FilterChipKey = 'province' | 'city' | 'industry' | 'tags' | 'trackingDate'
+type DataSyncCommand = 'market' | 'profile' | 'information'
 
 interface StockSearchOption {
   key: string
@@ -816,9 +652,11 @@ interface StockTableRef {
 }
 
 const message = useMessage()
+const workspaceCache = useStockWorkspaceCache()
 const loading = ref(false)
 const searchLoading = ref(false)
 const syncIndustryLoading = ref(false)
+const syncInformationLoading = ref(false)
 const list = ref<StockTrackRow[]>([])
 const groups = ref<StockGroupVO[]>([])
 const tags = ref<StockTagVO[]>([])
@@ -838,11 +676,15 @@ const filterExpanded = ref(false)
 const searchOptions = ref<StockSearchOption[]>([])
 const stockSearchHint = ref('')
 const detailRef = ref<InstanceType<typeof StockDetailDrawer>>()
+const aiSingleAnalysisRef = ref<InstanceType<typeof StockAiSingleAnalysisDrawer>>()
 const batchStockPoolAddRef = ref<InstanceType<typeof BatchStockPoolAddDialog>>()
+const stockImageAddRef = ref<InstanceType<typeof StockImageAddDialog>>()
 const batchHistoryImportRef = ref<InstanceType<typeof BatchHistoryImportDialog>>()
 const batchTrackingPeriodRef = ref<InstanceType<typeof BatchTrackingPeriodDialog>>()
+const stockGroupBatchAssignRef = ref<InstanceType<typeof StockGroupBatchAssignDialog>>()
 const stockTagManageRef = ref<InstanceType<typeof StockTagManageDialog>>()
 const stockTagAssignRef = ref<InstanceType<typeof StockTagAssignDialog>>()
+const groupInformationRef = ref<InstanceType<typeof GroupInformationPanel>>()
 const stockTableRef = ref<StockTableRef>()
 const tableRenderKey = ref(0)
 const groupDialogVisible = ref(false)
@@ -871,13 +713,14 @@ const canUpdateGroup = checkPermi(['finance:stock-track:update'])
 const canDeleteTrack = checkPermi(['finance:stock-track:delete'])
 const canSyncStockProfile = checkPermi(['finance:stock:update'])
 const canSyncTechnicalData = checkPermi(['finance:stock-daily-price:create'])
+const canSyncInformation = checkPermi(['finance:stock-information:query'])
 const tagMatchOptions = [
   { label: '全部匹配', value: 'ALL' },
   { label: '任一匹配', value: 'ANY' }
 ]
 const groupViewOptions = [
   { label: '个股列表', value: 'stocks' },
-  { label: '资讯公告', value: 'information' }
+  { label: '资讯公告研报', value: 'information' }
 ]
 const stockScopeOptions = [
   { label: '全部', value: 'ALL' },
@@ -895,6 +738,28 @@ const activeGroupTracks = computed(() =>
   activeGroupId.value === undefined
     ? []
     : list.value.filter((row) => row.groupIds.includes(activeGroupId.value as number))
+)
+const marketSyncTracks = computed(() =>
+  selectedTracks.value.length > 0 ? selectedTracks.value : activeGroupTracks.value
+)
+const marketSyncScopeLabel = computed(() =>
+  selectedTracks.value.length > 0
+    ? `已选 ${selectedTracks.value.length} 只`
+    : `当前分组 ${activeGroupTracks.value.length} 只`
+)
+const profileSyncScopeLabel = computed(() =>
+  selectedTracks.value.length > 0 ? `已选 ${selectedTracks.value.length} 只` : '全部个股'
+)
+const informationSyncScopeLabel = computed(() => `当前分组 ${activeGroupTracks.value.length} 只`)
+const dataSyncDisabled = computed(
+  () =>
+    syncIndustryLoading.value ||
+    syncInformationLoading.value ||
+    ((!canSyncTechnicalData || marketSyncTracks.value.length === 0) &&
+      !canSyncStockProfile &&
+      (!canSyncInformation ||
+        activeGroupId.value === undefined ||
+        activeGroupTracks.value.length === 0))
 )
 
 const today = dayjs().format('YYYY-MM-DD')
@@ -1257,28 +1122,17 @@ const getList = async () => {
   try {
     const previousGroupId = activeGroupId.value
     const previousRows = new Map(list.value.map((row) => [row.id, row]))
-    const [groupsResult, tagsResult, tracksResult, statisticsResult, priceChangesResult] =
-      await Promise.allSettled([
-        StockApi.getGroupList(),
-        StockApi.getTagList(),
-        StockApi.getTrackList(),
-        StockApi.getWinRate(),
-        StockApi.getPriceChangeList()
-      ])
+    const [workspaceResult, statisticsResult, priceChangesResult] = await Promise.allSettled([
+      workspaceCache.load(),
+      StockApi.getWinRate(),
+      StockApi.getPriceChangeList()
+    ])
     if (requestId !== listRequestId) return
     globalStatistics.value =
       statisticsResult.status === 'fulfilled' ? statisticsResult.value : undefined
-    if (groupsResult.status === 'rejected') {
-      throw groupsResult.reason
-    }
-    if (tracksResult.status === 'rejected') {
-      throw tracksResult.reason
-    }
-    if (tagsResult.status === 'rejected') {
-      throw tagsResult.reason
-    }
-    groups.value = groupsResult.value
-    tags.value = tagsResult.value
+    if (workspaceResult.status === 'rejected') throw workspaceResult.reason
+    groups.value = workspaceResult.value.groups
+    tags.value = workspaceResult.value.tags
     activeGroupId.value = groups.value.some((group) => group.id === previousGroupId)
       ? previousGroupId
       : groups.value[0]?.id
@@ -1287,7 +1141,7 @@ const getList = async () => {
         ? priceChangesResult.value.map((item) => [item.trackId, item])
         : []
     )
-    tracksToLoad = tracksResult.value
+    tracksToLoad = workspaceResult.value.tracks
     list.value = tracksToLoad.map((track) => {
       const previousRow = previousRows.get(track.id)
       return {
@@ -1400,14 +1254,21 @@ const selectedAddOptions = () => {
   return uniqueOptions
 }
 
-const openStockPoolAdd = () => {
-  const options = selectedAddOptions()
-  if (options.length === 0) return
+const trackedSymbols = computed(() => list.value.map((row) => row.symbol))
+
+const openStockPoolAddCandidates = (candidates: StockPoolAddCandidate[]) => {
+  if (candidates.length === 0) return
   const groupId =
     activeGroup.value && !isManagedMembershipGroup(activeGroup.value)
       ? activeGroup.value.id
       : undefined
   const groupName = groupId === undefined ? '自选' : activeGroup.value?.name || '自选'
+  batchStockPoolAddRef.value?.open(candidates, groupId, groupName)
+}
+
+const openStockPoolAdd = () => {
+  const options = selectedAddOptions()
+  if (options.length === 0) return
   const candidates: StockPoolAddCandidate[] = options.map((option) => ({
     key: option.key,
     source: option.source,
@@ -1417,7 +1278,11 @@ const openStockPoolAdd = () => {
     code: option.code,
     name: option.name
   }))
-  batchStockPoolAddRef.value?.open(candidates, groupId, groupName)
+  openStockPoolAddCandidates(candidates)
+}
+
+const handleImageCandidates = (candidates: StockPoolAddCandidate[]) => {
+  openStockPoolAddCandidates(candidates)
 }
 
 const handleStockPoolAdded = async (succeededKeys: string[]) => {
@@ -1425,12 +1290,14 @@ const handleStockPoolAdded = async (succeededKeys: string[]) => {
   selectedStockKeys.value = selectedStockKeys.value.filter((key) => !succeededKeySet.has(key))
   searchOptions.value = searchOptions.value.filter((option) => !succeededKeySet.has(option.key))
   stockSearchHint.value = ''
+  workspaceCache.invalidate()
   await getList()
 }
 
 const handleDelete = async (row: StockTrackRow) => {
   await message.delConfirm(`确定删除“${row.name}（${row.symbol}）”的跟踪记录吗？`)
   await StockApi.deleteTrack(row.id)
+  workspaceCache.invalidate()
   message.success('已删除跟踪记录')
   await getList()
 }
@@ -1484,6 +1351,7 @@ const submitGroup = async () => {
       message.success('分组已更新')
     }
     groupDialogVisible.value = false
+    workspaceCache.invalidate()
     await getList()
   } finally {
     groupSubmitLoading.value = false
@@ -1494,6 +1362,7 @@ const handleDeleteGroup = async () => {
   if (!activeGroup.value || activeGroup.value.fixed) return
   await message.delConfirm(`确定删除分组“${activeGroup.value.name}”吗？`)
   await StockApi.deleteGroup(activeGroup.value.id)
+  workspaceCache.invalidate()
   message.success('分组已删除')
   await getList()
 }
@@ -1517,6 +1386,7 @@ const submitGroupAssign = async () => {
       .filter((group) => assigningGroupIds.value.includes(group.id))
       .map((group) => group.name)
     assignDialogVisible.value = false
+    workspaceCache.invalidate()
     message.success('所属分组已更新')
   } finally {
     assignSubmitLoading.value = false
@@ -1536,15 +1406,85 @@ const syncIndustry = async (trackIds: number[]) => {
   }
 }
 
-const handleSyncIndustry = async () => {
-  const trackIds = selectedTracks.value.map((track) => track.id)
-  if (trackIds.length === 0) return
-  await syncIndustry(trackIds)
+const syncGroupInformation = async () => {
+  if (activeGroupId.value === undefined || activeGroupTracks.value.length === 0) {
+    message.warning('当前分组暂无可同步股票')
+    return
+  }
+  syncInformationLoading.value = true
+  try {
+    const types = ['NEWS', 'ANNOUNCEMENT', 'RESEARCH'] as const
+    const results = await Promise.allSettled(
+      types.map((type) =>
+        StockApi.syncGroupInformation({ groupId: activeGroupId.value as number, type })
+      )
+    )
+    const summaries = results.flatMap((result) =>
+      result.status === 'fulfilled' ? [result.value] : []
+    )
+    const rejectedCount = results.length - summaries.length
+    if (summaries.length === 0) {
+      message.error('资讯公告研报同步失败，已有本地数据不受影响')
+      return
+    }
+    const fetchedTimes = summaries
+      .map((summary) => summary.latestFetchedAt)
+      .filter((value): value is string => Boolean(value))
+      .sort()
+    const latestFetchedAt = fetchedTimes[fetchedTimes.length - 1] ?? null
+    const summary = summaries.reduce(
+      (total, current) => ({
+        requested: total.requested + current.requested,
+        succeeded: total.succeeded + current.succeeded,
+        failed: total.failed + current.failed,
+        fetched: total.fetched + current.fetched,
+        inserted: total.inserted + current.inserted,
+        updated: total.updated + current.updated,
+        latestFetchedAt
+      }),
+      {
+        requested: rejectedCount * activeGroupTracks.value.length,
+        succeeded: 0,
+        failed: rejectedCount * activeGroupTracks.value.length,
+        fetched: 0,
+        inserted: 0,
+        updated: 0,
+        latestFetchedAt
+      }
+    )
+    if (summary.failed > 0) {
+      message.warning(
+        `资讯公告研报同步完成：新增 ${summary.inserted} 条，更新 ${summary.updated} 条，失败 ${summary.failed} 个股票类型任务`
+      )
+    } else {
+      message.success(
+        `资讯公告研报同步完成：新增 ${summary.inserted} 条，更新 ${summary.updated} 条`
+      )
+    }
+    await groupInformationRef.value?.refresh(summary)
+  } finally {
+    syncInformationLoading.value = false
+  }
 }
 
-const handleToolbarCommand = async () => {
-  await message.confirm('确定同步当前用户全部跟踪股票的省份、城市和行业吗？')
-  await syncIndustry([])
+const handleDataSyncCommand = async (command: DataSyncCommand) => {
+  if (command === 'market') {
+    if (marketSyncTracks.value.length === 0) {
+      message.warning('当前分组暂无可同步股票')
+      return
+    }
+    batchHistoryImportRef.value?.open(marketSyncTracks.value)
+    return
+  }
+  if (command === 'information') {
+    await syncGroupInformation()
+    return
+  }
+  const trackIds = selectedTracks.value.map((track) => track.id)
+  if (trackIds.length === 0) {
+    await message.confirm('未勾选股票，确定同步当前用户全部股票的省份、城市和行业吗？')
+  }
+  await syncIndustry(trackIds)
 }
 
 const clearFilterChip = (key: FilterChipKey) => {
@@ -1574,6 +1514,7 @@ const tagStyle = (color: string) => ({
 })
 
 const handleTagsChanged = (updatedTags: StockTagVO[]) => {
+  workspaceCache.invalidate()
   tags.value = updatedTags
   const tagMap = new Map(updatedTags.map((tag) => [tag.id, tag]))
   const validTagIds = new Set(tagMap.keys())
@@ -1594,13 +1535,22 @@ const openBatchTagAssign = () => {
   openTagAssign(selectedTracks.value)
 }
 
+const openBatchGroupAssign = () => {
+  stockGroupBatchAssignRef.value?.open(selectedTracks.value, groups.value)
+}
+
 const handleTagsAssigned = async () => {
   clearTrackSelection()
+  workspaceCache.invalidate()
   await getList()
 }
 
 const openDetail = (row: StockTrackRow) => {
   detailRef.value?.open(row)
+}
+
+const openSingleAi = (row: StockTrackRow) => {
+  aiSingleAnalysisRef.value?.open(row)
 }
 
 const handleSelectionChange = (rows: StockTrackRow[]) => {
@@ -1729,18 +1679,6 @@ const initColumnSortable = async () => {
   })
 }
 
-const openBatchHistoryImport = () => {
-  batchHistoryImportRef.value?.open(selectedTracks.value)
-}
-
-const openGroupTechnicalSync = () => {
-  if (activeGroupTracks.value.length === 0) {
-    message.warning('当前分组暂无可同步股票')
-    return
-  }
-  batchHistoryImportRef.value?.open(activeGroupTracks.value)
-}
-
 const openBatchTrackingPeriod = () => {
   batchTrackingPeriodRef.value?.open(selectedTracks.value)
 }
@@ -1756,6 +1694,7 @@ const clearTrackSelection = () => {
 
 const handleBatchUpdated = async () => {
   clearTrackSelection()
+  workspaceCache.invalidate()
   await getList()
 }
 
@@ -1825,255 +1764,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.workspace-heading,
-.workspace-title-row,
-.workspace-heading__actions,
-.workspace-context,
-.stock-add-bar,
-.filter-command-row,
-.filter-command-main,
-.active-filter-chips {
-  display: flex;
-  align-items: center;
-}
-
-.workspace-heading {
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.workspace-heading__main {
-  min-width: 0;
-}
-
-.workspace-title-row {
-  gap: 10px;
-}
-
-.workspace-title-row h2 {
-  margin: 0;
-  font-size: 18px;
-  line-height: 1.4;
-  letter-spacing: 0;
-  color: var(--el-text-color-primary);
-}
-
-.workspace-heading__actions,
-.workspace-context,
-.active-filter-chips {
-  gap: 8px;
-}
-
-.workspace-context {
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-
-.workspace-context span + span::before {
-  margin-right: 8px;
-  color: var(--el-border-color);
-  content: '/';
-}
-
-.workspace-context .workspace-context--warning {
-  color: #a65f00;
-}
-
-.stock-add-bar {
-  gap: 10px;
-  margin-top: 16px;
-}
-
-.stock-search {
-  width: 100%;
-}
-
-.stock-search-wrap {
-  min-width: 280px;
-  flex: 1;
-}
-
-.stock-search-hint {
-  display: block;
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-
-.filter-command-row {
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 12px;
-  margin-top: 12px;
-  border-top: 1px solid var(--el-border-color-lighter);
-}
-
-.filter-command-main {
-  min-width: 0;
-  flex: 1;
-  gap: 10px;
-}
-
-.active-filter-chips {
-  min-width: 0;
-  flex-wrap: wrap;
-}
-
-.filter-command-empty {
-  overflow: hidden;
-  font-size: 12px;
-  color: var(--el-text-color-placeholder);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.filter-panel {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 12px;
-  margin-top: 12px;
-  background: var(--el-fill-color-extra-light);
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 4px;
-}
-
-.filter-select {
-  width: 156px;
-}
-
-.filter-select--industry {
-  width: 184px;
-}
-
-.filter-tags {
-  width: 240px;
-}
-
-.tag-match-mode {
-  flex: none;
-}
-
-.filter-date-range {
-  width: 300px;
-}
-
-.statistics-workbench {
-  display: grid;
-  grid-template-columns: minmax(160px, 0.75fr) minmax(260px, 1.15fr) minmax(420px, 1.7fr);
-  min-height: 104px;
-  margin-top: 14px;
-  overflow: hidden;
-  background: var(--el-fill-color-extra-light);
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 4px;
-}
-
-.statistics-primary,
-.statistics-distribution,
-.statistics-context-grid {
-  min-width: 0;
-  padding: 14px 16px;
-}
-
-.statistics-primary {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  box-shadow: inset 3px 0 var(--el-color-primary);
-}
-
-.statistics-primary span,
-.context-metric span,
-.distribution-heading,
-.statistics-primary small {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-
-.statistics-primary strong {
-  margin: 3px 0;
-  font-size: 28px;
-  line-height: 1.2;
-  font-variant-numeric: tabular-nums;
-}
-
-.statistics-distribution {
-  border-left: 1px solid var(--el-border-color-lighter);
-}
-
-.distribution-heading,
-.distribution-counts {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.distribution-counts {
-  margin-top: 13px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.distribution-bar {
-  display: flex;
-  height: 8px;
-  margin-top: 12px;
-  overflow: hidden;
-  background: var(--el-fill-color-darker);
-  border-radius: 2px;
-}
-
-.distribution-bar__win {
-  background: #d94848;
-}
-
-.distribution-bar__loss {
-  background: #22936d;
-}
-
-.distribution-bar__flat {
-  background: #8c95a3;
-}
-
-.statistics-context-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0;
-  border-left: 1px solid var(--el-border-color-lighter);
-}
-
-.context-metric {
-  display: flex;
-  min-width: 0;
-  padding: 0 12px;
-  flex-direction: column;
-  justify-content: center;
-  border-left: 1px solid var(--el-border-color-lighter);
-}
-
-.context-metric:first-child {
-  border-left: 0;
-}
-
-.context-metric strong {
-  margin-top: 5px;
-  overflow: hidden;
-  font-size: 20px;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
-.context-metric--warning strong {
-  color: #a65f00;
-}
-
 .group-tabs-row {
   display: flex;
   align-items: flex-start;
@@ -2263,21 +1953,6 @@ onBeforeUnmount(() => {
   color: var(--el-color-danger);
 }
 
-.stock-option {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-}
-
-.stock-option__main {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  gap: 6px;
-}
-
-.stock-option__meta,
 .stock-code {
   font-size: 12px;
   color: var(--el-text-color-secondary);
@@ -2351,14 +2026,6 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   gap: 4px;
   min-height: 24px;
-}
-
-.tag-option-dot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  margin-right: 8px;
-  border-radius: 50%;
 }
 
 .stock-column-header {
@@ -2442,16 +2109,6 @@ onBeforeUnmount(() => {
 }
 
 @media (width <=1100px) {
-  .statistics-workbench {
-    grid-template-columns: minmax(160px, 0.7fr) minmax(260px, 1.3fr);
-  }
-
-  .statistics-context-grid {
-    grid-column: span 2;
-    border-top: 1px solid var(--el-border-color-lighter);
-    border-left: 0;
-  }
-
   .group-workbar__scope,
   .group-workbar__tools {
     flex-wrap: wrap;
@@ -2459,115 +2116,12 @@ onBeforeUnmount(() => {
 }
 
 @media (width <=720px) {
-  .workspace-heading,
-  .stock-add-bar,
-  .filter-command-row,
-  .filter-command-main,
   .group-tabs-row,
   .group-workbar,
   .group-workbar__scope,
   .group-workbar__tools {
     align-items: stretch;
     flex-direction: column;
-  }
-
-  .workspace-heading__actions {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-
-  .workspace-heading__actions > .el-button,
-  .workspace-heading__actions > .el-dropdown {
-    flex: 1;
-  }
-
-  .workspace-context {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .workspace-context span + span::before {
-    display: none;
-  }
-
-  .stock-add-bar {
-    align-items: stretch;
-  }
-
-  .stock-search-wrap {
-    width: 100%;
-    min-width: 0;
-  }
-
-  .stock-add-bar > .el-button {
-    width: 100%;
-    margin-left: 0;
-  }
-
-  .filter-command-main {
-    width: 100%;
-  }
-
-  .filter-command-empty {
-    white-space: normal;
-  }
-
-  .active-filter-chips {
-    width: 100%;
-  }
-
-  .filter-panel {
-    align-items: stretch;
-  }
-
-  .filter-select,
-  .filter-select--industry {
-    width: calc(50% - 6px);
-  }
-
-  .filter-tags,
-  .tag-match-mode {
-    width: 100%;
-  }
-
-  .filter-date-range {
-    width: 100%;
-  }
-
-  .statistics-workbench {
-    grid-template-columns: 1fr;
-  }
-
-  .statistics-primary,
-  .statistics-distribution,
-  .statistics-context-grid {
-    grid-column: auto;
-    border-top: 1px solid var(--el-border-color-lighter);
-    border-left: 0;
-  }
-
-  .statistics-primary {
-    border-top: 0;
-  }
-
-  .statistics-context-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding: 0;
-  }
-
-  .context-metric {
-    min-height: 68px;
-    padding: 10px 12px;
-    border-top: 1px solid var(--el-border-color-lighter);
-  }
-
-  .context-metric:nth-child(odd) {
-    border-left: 0;
-  }
-
-  .context-metric:nth-child(-n + 2) {
-    border-top: 0;
   }
 
   .group-tabs-row {

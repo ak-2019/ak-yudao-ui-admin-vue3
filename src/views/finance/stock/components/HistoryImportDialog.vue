@@ -9,6 +9,7 @@
         start-placeholder="开始日期"
         end-placeholder="结束日期"
         :disabled-date="disableFutureDate"
+        :shortcuts="financeDateRangeShortcuts"
         class="history-date-picker"
       />
       <el-button type="primary" :loading="previewLoading" @click="loadPreview">
@@ -95,6 +96,7 @@
 
 <script setup lang="ts">
 import dayjs from 'dayjs'
+import { financeDateRangeShortcuts } from '@/views/finance/utils/dateShortcuts'
 import {
   MarketDataResult,
   StockApi,

@@ -1,5 +1,5 @@
 <template>
-  <Dialog v-model="dialogVisible" :title="`批量同步技术数据（${rows.length} 只）`" width="1040px">
+  <Dialog v-model="dialogVisible" :title="`同步行情与技术数据（${rows.length} 只）`" width="1040px">
     <div class="batch-toolbar">
       <el-date-picker
         v-model="dateRange"
@@ -10,6 +10,7 @@
         end-placeholder="结束日期"
         :disabled="running"
         :disabled-date="disableFutureDate"
+        :shortcuts="financeDateRangeShortcuts"
         class="batch-date-picker"
       />
       <el-switch v-model="overwriteManual" active-text="覆盖手工记录" :disabled="running" />
@@ -73,6 +74,7 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
 import { StockApi, StockTrackVO } from '@/api/finance/stock'
+import { financeDateRangeShortcuts } from '@/views/finance/utils/dateShortcuts'
 
 defineOptions({ name: 'FinanceStockBatchHistoryImportDialog' })
 

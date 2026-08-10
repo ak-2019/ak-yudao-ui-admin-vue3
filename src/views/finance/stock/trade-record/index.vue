@@ -1,4 +1,5 @@
 <template>
+  <StockWorkspaceNav />
   <ContentWrap>
     <div class="trade-toolbar">
       <el-input
@@ -29,6 +30,7 @@
         end-placeholder="结束日期"
         range-separator="至"
         clearable
+        :shortcuts="financeDateRangeShortcuts"
       />
       <el-button type="primary" @click="handleQuery">
         <Icon icon="ep:search" class="mr-5px" />
@@ -249,6 +251,7 @@
             value-format="YYYY-MM-DD"
             :clearable="false"
             :disabled-date="disableFutureDate"
+            :shortcuts="financeDateShortcuts"
           />
         </el-form-item>
         <el-form-item label="成交时间" prop="tradeTime">
@@ -336,12 +339,17 @@ import { Search } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { FinanceMarket, StockApi, StockSearchVO } from '@/api/finance/stock'
 import {
+  financeDateRangeShortcuts,
+  financeDateShortcuts
+} from '@/views/finance/utils/dateShortcuts'
+import {
   StockTradeRecordApi,
   StockTradeRecordPageParams,
   StockTradeRecordSummaryVO,
   StockTradeRecordVO,
   StockTradeType
 } from '@/api/finance/stock/trade-record'
+import StockWorkspaceNav from '../components/StockWorkspaceNav.vue'
 
 defineOptions({ name: 'FinanceStockTradeRecord' })
 
