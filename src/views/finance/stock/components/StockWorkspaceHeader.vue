@@ -20,8 +20,13 @@
           标签管理
         </el-button>
       </el-tooltip>
-      <el-tooltip content="刷新跟踪列表" placement="top">
-        <el-button :loading="loading" circle aria-label="刷新跟踪列表" @click="emit('refresh')">
+      <el-tooltip content="刷新工作台与实时行情" placement="top">
+        <el-button
+          :loading="loading"
+          circle
+          aria-label="刷新工作台与实时行情"
+          @click="emit('refresh')"
+        >
           <Icon icon="ep:refresh" />
         </el-button>
       </el-tooltip>

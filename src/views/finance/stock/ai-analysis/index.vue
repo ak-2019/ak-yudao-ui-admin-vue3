@@ -17,33 +17,6 @@
       </div>
 
       <div class="command-actions">
-        <el-segmented v-model="period" :options="periodOptions" :disabled="busy || streaming" />
-        <el-date-picker
-          v-if="period === 'CUSTOM'"
-          v-model="customDateRange"
-          class="custom-range-picker"
-          type="daterange"
-          value-format="YYYY-MM-DD"
-          range-separator="至"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-          unlink-panels
-          :clearable="false"
-          :disabled="busy || streaming"
-          :disabled-date="disableFutureDate"
-          :shortcuts="financeDateRangeShortcuts"
-        />
-        <el-button
-          type="primary"
-          plain
-          :loading="calculating"
-          :disabled="generating || streaming"
-          v-hasPermi="['finance:stock-ai-analysis:query']"
-          @click="runSystemAnalysis"
-        >
-          <Icon icon="ep:data-analysis" class="mr-5px" />
-          计算系统分析
-        </el-button>
         <el-dropdown trigger="click">
           <el-button circle title="AI 配置">
             <Icon icon="ep:setting" />
@@ -61,6 +34,63 @@
         </el-dropdown>
       </div>
     </header>
+
+    <section class="analysis-controls">
+      <div class="scope-control">
+        <span class="control-label">分析对象</span>
+        <el-segmented
+          v-model="analysisScope"
+          :options="analysisScopeOptions"
+          :disabled="busy || loadingConversation"
+        />
+        <span class="scope-description">{{ analysisScopeDescription }}</span>
+      </div>
+
+      <div class="date-control">
+        <span class="control-label">分析区间</span>
+        <div class="date-preset-list">
+          <el-button
+            v-for="item in datePresetOptions"
+            :key="item.value"
+            size="small"
+            :type="datePreset === item.value ? 'primary' : 'default'"
+            :plain="datePreset !== item.value"
+            :disabled="busy || loadingConversation"
+            @click="applyDatePreset(item.value)"
+          >
+            {{ item.label }}
+          </el-button>
+        </div>
+        <el-date-picker
+          v-if="datePreset === 'CUSTOM'"
+          v-model="customDateRange"
+          class="custom-range-picker"
+          type="daterange"
+          value-format="YYYY-MM-DD"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          unlink-panels
+          :clearable="false"
+          :disabled="busy || loadingConversation"
+          :disabled-date="disableFutureDate"
+          :shortcuts="financeDateRangeShortcuts"
+        />
+        <span v-else class="selected-range">{{ selectedDateRangeLabel }}</span>
+        <el-button
+          class="system-analysis-button"
+          type="primary"
+          plain
+          :loading="calculating"
+          :disabled="generating || streaming || loadingConversation"
+          v-hasPermi="['finance:stock-ai-analysis:query']"
+          @click="runSystemAnalysis"
+        >
+          <Icon icon="ep:data-analysis" class="mr-5px" />
+          计算系统分析
+        </el-button>
+      </div>
+    </section>
 
     <div v-if="configStatus && !configStatus.configured" class="configuration-warning">
       <Icon icon="ep:warning" />
@@ -84,28 +114,14 @@
         }}</span>
         <strong>{{ analysisDateRange }}</strong>
       </div>
-      <div class="metric-item">
-        <span class="metric-label">当前持仓</span>
-        <strong>{{ activeAnalysis?.positionCount ?? '--' }}</strong>
-      </div>
-      <div class="metric-item">
-        <span class="metric-label">周期成交</span>
-        <strong>{{ activeAnalysis?.tradeCount ?? '--' }}</strong>
-      </div>
-      <div class="metric-item">
-        <span class="metric-label">涉及股票</span>
-        <strong>{{ activeAnalysis?.stockCount ?? '--' }}</strong>
-      </div>
-      <div class="metric-item">
-        <span class="metric-label">行情日线</span>
-        <strong>{{ activeAnalysis?.marketBarCount ?? '--' }}</strong>
-      </div>
       <div
+        v-for="item in analysisMetrics"
+        :key="item.label"
         class="metric-item"
-        :class="{ 'metric-item--warning': activeAnalysis?.missingMarketDataCount }"
+        :class="{ 'metric-item--warning': item.warning }"
       >
-        <span class="metric-label">行情缺失</span>
-        <strong>{{ activeAnalysis?.missingMarketDataCount ?? '--' }}</strong>
+        <span class="metric-label">{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
       </div>
     </section>
 
@@ -179,7 +195,7 @@
         <section class="conversation-panel">
           <div class="conversation-heading">
             <div>
-              <h2>{{ activeTitle || `${periodLabel}分析` }}</h2>
+              <h2>{{ activeTitle || `${analysisScopeLabel} · ${periodLabel}` }}</h2>
               <span v-if="activeConversationId" class="conversation-id">
                 会话 #{{ activeConversationId }}
               </span>
@@ -198,11 +214,13 @@
             <div v-if="messages.length === 0 && !loadingConversation" class="empty-report">
               <Icon icon="ep:document-add" />
               <strong>{{
-                configStatus?.configured ? `生成 AI ${periodLabel}` : 'AI 报告尚未配置'
+                configStatus?.configured
+                  ? `生成 AI ${analysisScopeLabel}${periodLabel}`
+                  : 'AI 报告尚未配置'
               }}</strong>
               <span>{{
                 configStatus?.configured
-                  ? '系统会汇总当前持仓、周期成交和行情数据，并持续显示生成进度'
+                  ? analysisScopeEmptyDescription
                   : '完成密钥和模型配置后即可生成报告'
               }}</span>
               <el-button
@@ -212,7 +230,7 @@
                 @click="generateAiReport"
               >
                 <Icon icon="ep:magic-stick" class="mr-5px" />
-                开始生成 {{ periodLabel }}
+                开始生成 {{ analysisScopeLabel }}{{ periodLabel }}
               </el-button>
             </div>
 
@@ -302,41 +320,56 @@
           </div>
         </section>
 
-        <aside class="history-panel">
-          <div class="history-heading">
-            <div>
-              <h2>最近分析</h2>
-              <span>{{ history.length }} 个会话</span>
-            </div>
-            <el-button text circle title="刷新" :loading="loadingHistory" @click="loadHistory">
-              <Icon icon="ep:refresh" />
-            </el-button>
+        <aside class="report-side-panel">
+          <div class="side-panel-switch">
+            <el-segmented v-model="sidePanelView" :options="sidePanelOptions" size="small" />
           </div>
 
-          <div class="history-list" v-loading="loadingHistory">
-            <button
-              v-for="item in history"
-              :key="item.conversationId"
-              type="button"
-              class="history-item"
-              :class="{ 'history-item--active': item.conversationId === activeConversationId }"
-              @click="openHistory(item)"
-            >
-              <span class="history-period">{{ getPeriodLabel(item.period) }}</span>
-              <span class="history-title">{{ item.title.replace('[股票AI] ', '') }}</span>
-              <span class="history-time">{{ formatHistoryTime(item.createTime) }}</span>
-              <span
-                class="history-delete"
-                role="button"
-                title="删除会话"
-                @click.stop="deleteHistory(item)"
+          <StockAiInputContextPanel
+            v-if="sidePanelView === 'context'"
+            :content="aiInputContext"
+            :analysis="session"
+            :loading="generating || loadingConversation"
+            @copy="copyAiInput"
+            @download="downloadAiInput"
+          />
+
+          <div v-else class="history-panel">
+            <div class="history-heading">
+              <div>
+                <h2>{{ analysisScopeLabel }}历史</h2>
+                <span>{{ scopeHistory.length }} 个会话</span>
+              </div>
+              <el-button text circle title="刷新" :loading="loadingHistory" @click="loadHistory">
+                <Icon icon="ep:refresh" />
+              </el-button>
+            </div>
+
+            <div class="history-list" v-loading="loadingHistory">
+              <button
+                v-for="item in scopeHistory"
+                :key="item.conversationId"
+                type="button"
+                class="history-item"
+                :class="{ 'history-item--active': item.conversationId === activeConversationId }"
+                @click="openHistory(item)"
               >
-                <Icon icon="ep:delete" />
-              </span>
-            </button>
-            <div v-if="history.length === 0 && !loadingHistory" class="history-empty"
-              >暂无历史分析</div
-            >
+                <span class="history-period">{{ getPeriodLabel(item.period) }}</span>
+                <span class="history-title">{{ item.title.replace('[股票AI] ', '') }}</span>
+                <span class="history-time">{{ formatHistoryTime(item.createTime) }}</span>
+                <span
+                  class="history-delete"
+                  role="button"
+                  title="删除会话"
+                  @click.stop="deleteHistory(item)"
+                >
+                  <Icon icon="ep:delete" />
+                </span>
+              </button>
+              <div v-if="scopeHistory.length === 0 && !loadingHistory" class="history-empty"
+                >暂无{{ analysisScopeLabel }}分析</div
+              >
+            </div>
           </div>
         </aside>
       </div>
@@ -352,11 +385,13 @@ import {
   type StockAiAnalysisConfigStatusVO,
   type StockAiAnalysisHistoryVO,
   type StockAiAnalysisPeriod,
+  type StockAiAnalysisScope,
   type StockAiAnalysisSessionVO,
   type StockSystemAnalysisVO
 } from '@/api/finance/stock/ai-analysis'
 import MarkdownView from '@/components/MarkdownView/index.vue'
 import StockAiDashboardPanel from './components/StockAiDashboardPanel.vue'
+import StockAiInputContextPanel from './components/StockAiInputContextPanel.vue'
 import StockWorkspaceNav from '../components/StockWorkspaceNav.vue'
 import download from '@/utils/download'
 import { formatDate } from '@/utils/formatTime'
@@ -369,9 +404,10 @@ const router = useRouter()
 const message = useMessage()
 const { copy } = useClipboard({ legacy: true })
 
-const period = ref<StockAiAnalysisPeriod>('WEEKLY')
 type WorkspaceView = 'system' | 'report'
 type DashboardView = 'overview' | 'stocks' | 'behavior' | 'risk'
+type SidePanelView = 'context' | 'history'
+type DatePreset = 'TODAY' | 'WEEK' | 'MONTH' | 'LAST_5' | 'LAST_20' | 'YEAR' | 'CUSTOM'
 type ReportRunStatus =
   | 'idle'
   | 'preparing'
@@ -386,6 +422,28 @@ type StreamPurpose = 'report' | 'question'
 type ReportStatusTone = 'neutral' | 'active' | 'success' | 'warning' | 'danger'
 type ReportStatusTagType = 'primary' | 'success' | 'info' | 'warning' | 'danger'
 
+interface ScopeWorkspaceState {
+  period: StockAiAnalysisPeriod
+  datePreset: DatePreset
+  customDateRange: [string, string]
+  workspaceView: WorkspaceView
+  dashboardView: DashboardView
+  sidePanelView: SidePanelView
+  systemAnalysis?: StockSystemAnalysisVO
+  session?: StockAiAnalysisSessionVO
+  aiInputContext: string
+  messages: ChatMessageVO[]
+  activeConversationId?: number
+  activeTitle: string
+  question: string
+  reportStatus: ReportRunStatus
+  reportStatusDetail: string
+  streamPurpose: StreamPurpose
+  reportStartedAt?: number
+  reportFinishedAt?: number
+  lastResponseAt?: number
+}
+
 const runningReportStatuses: ReportRunStatus[] = [
   'preparing',
   'connecting',
@@ -393,8 +451,6 @@ const runningReportStatuses: ReportRunStatus[] = [
   'generating'
 ]
 const streamingReportStatuses: ReportRunStatus[] = ['connecting', 'waiting', 'generating']
-const workspaceView = ref<WorkspaceView>('system')
-const dashboardView = ref<DashboardView>('overview')
 const workspaceOptions = [
   { label: '系统数据分析', value: 'system' },
   { label: 'AI 完整报告', value: 'report' }
@@ -405,53 +461,233 @@ const dashboardViewOptions = [
   { label: '交易行为', value: 'behavior' },
   { label: '风险诊断', value: 'risk' }
 ]
-const quickPrompts = [
-  '为什么跑输基准？',
-  '哪三笔交易最需要复盘？',
-  '当前最大风险是什么？',
-  '给出下一周期检查清单'
+const sidePanelOptions = [
+  { label: 'AI 输入数据', value: 'context' },
+  { label: '最近分析', value: 'history' }
 ]
-const periodOptions = [
-  { label: '日报', value: 'DAILY' },
-  { label: '周报', value: 'WEEKLY' },
-  { label: '月报', value: 'MONTHLY' },
+const analysisScopeOptions = [
+  { label: '综合复盘', value: 'COMPREHENSIVE' },
+  { label: '当前持仓', value: 'POSITION' },
+  { label: '已清仓', value: 'CLOSED_POSITION' },
+  { label: '交易流水', value: 'TRADE_RECORD' }
+]
+const datePresetOptions: Array<{ label: string; value: DatePreset }> = [
+  { label: '今日', value: 'TODAY' },
+  { label: '本周', value: 'WEEK' },
+  { label: '本月', value: 'MONTH' },
+  { label: '近 5 交易日', value: 'LAST_5' },
+  { label: '近 20 交易日', value: 'LAST_20' },
+  { label: '今年', value: 'YEAR' },
   { label: '自定义', value: 'CUSTOM' }
 ]
-const today = new Date()
-const thirtyDaysAgo = new Date(today)
-thirtyDaysAgo.setDate(today.getDate() - 29)
-const customDateRange = ref<[string, string]>([
-  formatDate(thirtyDaysAgo, 'YYYY-MM-DD'),
-  formatDate(today, 'YYYY-MM-DD')
-])
+const analysisScopeDescriptionMap: Record<StockAiAnalysisScope, string> = {
+  COMPREHENSIVE: '持仓、成交、清仓与行情的联合复盘',
+  POSITION: '当前持仓快照与所选区间行情表现',
+  CLOSED_POSITION: '按清仓日期复盘已实现盈亏与退出质量',
+  TRADE_RECORD: '按成交日期检查交易行为、费用与纪律'
+}
+const analysisScopeEmptyDescriptionMap: Record<StockAiAnalysisScope, string> = {
+  COMPREHENSIVE: '汇总持仓、成交、清仓和行情数据，生成综合账户复盘',
+  POSITION: '分析当前持仓集中度、相对基准表现、技术状态与条件化计划',
+  CLOSED_POSITION: '分析区间清仓胜率、盈亏因子、超额收益与重复行为模式',
+  TRADE_RECORD: '区分证券买卖、资金划转和公司行为，检查频次、费用与纪律'
+}
+const quickPromptMap: Record<StockAiAnalysisScope, string[]> = {
+  COMPREHENSIVE: [
+    '为什么跑输基准？',
+    '哪三笔交易最需要复盘？',
+    '当前最大风险是什么？',
+    '给出下一周期检查清单'
+  ],
+  POSITION: [
+    '哪只持仓风险贡献最大？',
+    '哪些持仓跑输基准？',
+    '给出逐股触发与失效条件',
+    '仓位集中度如何调整？'
+  ],
+  CLOSED_POSITION: [
+    '最常见的亏损模式是什么？',
+    '哪些清仓时机质量最差？',
+    '盈利与亏损样本有何差异？',
+    '给出未回测规则草案'
+  ],
+  TRADE_RECORD: [
+    '是否存在追涨杀跌？',
+    '交易费用侵蚀有多大？',
+    '哪些交易频率异常？',
+    '给出纪律检查清单'
+  ]
+}
+
+const now = new Date()
+const todayText = formatDate(now, 'YYYY-MM-DD')
+const thirtyDaysAgo = new Date(now)
+thirtyDaysAgo.setDate(now.getDate() - 29)
+const defaultCustomRange: [string, string] = [formatDate(thirtyDaysAgo, 'YYYY-MM-DD'), todayText]
+const createScopeWorkspace = (): ScopeWorkspaceState => ({
+  period: 'WEEKLY',
+  datePreset: 'WEEK',
+  customDateRange: [...defaultCustomRange],
+  workspaceView: 'system',
+  dashboardView: 'overview',
+  sidePanelView: 'history',
+  aiInputContext: '',
+  messages: [],
+  activeTitle: '',
+  question: '',
+  reportStatus: 'idle',
+  reportStatusDetail: '',
+  streamPurpose: 'report'
+})
+const analysisScope = ref<StockAiAnalysisScope>('COMPREHENSIVE')
+const scopeWorkspaces = reactive<Record<StockAiAnalysisScope, ScopeWorkspaceState>>({
+  COMPREHENSIVE: createScopeWorkspace(),
+  POSITION: createScopeWorkspace(),
+  CLOSED_POSITION: createScopeWorkspace(),
+  TRADE_RECORD: createScopeWorkspace()
+})
+const currentScopeWorkspace = computed(() => scopeWorkspaces[analysisScope.value])
+const period = computed({
+  get: () => currentScopeWorkspace.value.period,
+  set: (value: StockAiAnalysisPeriod) => (currentScopeWorkspace.value.period = value)
+})
+const datePreset = computed({
+  get: () => currentScopeWorkspace.value.datePreset,
+  set: (value: DatePreset) => (currentScopeWorkspace.value.datePreset = value)
+})
+const customDateRange = computed({
+  get: () => currentScopeWorkspace.value.customDateRange,
+  set: (value: [string, string]) => (currentScopeWorkspace.value.customDateRange = value)
+})
+const workspaceView = computed({
+  get: () => currentScopeWorkspace.value.workspaceView,
+  set: (value: WorkspaceView) => (currentScopeWorkspace.value.workspaceView = value)
+})
+const dashboardView = computed({
+  get: () => currentScopeWorkspace.value.dashboardView,
+  set: (value: DashboardView) => (currentScopeWorkspace.value.dashboardView = value)
+})
+const sidePanelView = computed({
+  get: () => currentScopeWorkspace.value.sidePanelView,
+  set: (value: SidePanelView) => (currentScopeWorkspace.value.sidePanelView = value)
+})
+const systemAnalysis = computed({
+  get: () => currentScopeWorkspace.value.systemAnalysis,
+  set: (value: StockSystemAnalysisVO | undefined) =>
+    (currentScopeWorkspace.value.systemAnalysis = value)
+})
+const session = computed({
+  get: () => currentScopeWorkspace.value.session,
+  set: (value: StockAiAnalysisSessionVO | undefined) =>
+    (currentScopeWorkspace.value.session = value)
+})
+const aiInputContext = computed({
+  get: () => currentScopeWorkspace.value.aiInputContext,
+  set: (value: string) => (currentScopeWorkspace.value.aiInputContext = value)
+})
+const messages = computed({
+  get: () => currentScopeWorkspace.value.messages,
+  set: (value: ChatMessageVO[]) => (currentScopeWorkspace.value.messages = value)
+})
+const activeConversationId = computed({
+  get: () => currentScopeWorkspace.value.activeConversationId,
+  set: (value: number | undefined) => (currentScopeWorkspace.value.activeConversationId = value)
+})
+const activeTitle = computed({
+  get: () => currentScopeWorkspace.value.activeTitle,
+  set: (value: string) => (currentScopeWorkspace.value.activeTitle = value)
+})
+const question = computed({
+  get: () => currentScopeWorkspace.value.question,
+  set: (value: string) => (currentScopeWorkspace.value.question = value)
+})
+const reportStatus = computed({
+  get: () => currentScopeWorkspace.value.reportStatus,
+  set: (value: ReportRunStatus) => (currentScopeWorkspace.value.reportStatus = value)
+})
+const reportStatusDetail = computed({
+  get: () => currentScopeWorkspace.value.reportStatusDetail,
+  set: (value: string) => (currentScopeWorkspace.value.reportStatusDetail = value)
+})
+const streamPurpose = computed({
+  get: () => currentScopeWorkspace.value.streamPurpose,
+  set: (value: StreamPurpose) => (currentScopeWorkspace.value.streamPurpose = value)
+})
+const reportStartedAt = computed({
+  get: () => currentScopeWorkspace.value.reportStartedAt,
+  set: (value: number | undefined) => (currentScopeWorkspace.value.reportStartedAt = value)
+})
+const reportFinishedAt = computed({
+  get: () => currentScopeWorkspace.value.reportFinishedAt,
+  set: (value: number | undefined) => (currentScopeWorkspace.value.reportFinishedAt = value)
+})
+const lastResponseAt = computed({
+  get: () => currentScopeWorkspace.value.lastResponseAt,
+  set: (value: number | undefined) => (currentScopeWorkspace.value.lastResponseAt = value)
+})
 const configStatus = ref<StockAiAnalysisConfigStatusVO>()
-const systemAnalysis = ref<StockSystemAnalysisVO>()
-const session = ref<StockAiAnalysisSessionVO>()
 const history = ref<StockAiAnalysisHistoryVO[]>([])
-const messages = ref<ChatMessageVO[]>([])
-const activeConversationId = ref<number>()
-const activeTitle = ref('')
-const question = ref('')
 const calculating = ref(false)
 const loadingHistory = ref(false)
 const loadingConversation = ref(false)
 const abortController = ref<AbortController>()
 const messageViewport = ref<HTMLElement>()
 const isComposing = ref(false)
-const reportStatus = ref<ReportRunStatus>('idle')
-const reportStatusDetail = ref('')
-const streamPurpose = ref<StreamPurpose>('report')
-const reportStartedAt = ref<number>()
-const reportFinishedAt = ref<number>()
-const lastResponseAt = ref<number>()
 const statusClock = ref(Date.now())
 let statusTimer: number | undefined
 
-const periodLabel = computed(() => getPeriodLabel(period.value))
+const resolvePresetRange = (preset: DatePreset): [string, string] => {
+  const end = new Date()
+  const endText = formatDate(end, 'YYYY-MM-DD')
+  if (preset === 'TODAY') return [endText, endText]
+  if (preset === 'WEEK') {
+    const start = new Date(end)
+    const day = start.getDay()
+    start.setDate(start.getDate() - (day === 0 ? 6 : day - 1))
+    return [formatDate(start, 'YYYY-MM-DD'), endText]
+  }
+  if (preset === 'MONTH') {
+    return [formatDate(new Date(end.getFullYear(), end.getMonth(), 1), 'YYYY-MM-DD'), endText]
+  }
+  if (preset === 'YEAR') {
+    return [formatDate(new Date(end.getFullYear(), 0, 1), 'YYYY-MM-DD'), endText]
+  }
+  if (preset === 'LAST_5' || preset === 'LAST_20') {
+    const requiredDays = preset === 'LAST_5' ? 5 : 20
+    const start = new Date(end)
+    let remaining = requiredDays
+    while (remaining > 0) {
+      const day = start.getDay()
+      if (day !== 0 && day !== 6) remaining -= 1
+      if (remaining > 0) start.setDate(start.getDate() - 1)
+    }
+    return [formatDate(start, 'YYYY-MM-DD'), endText]
+  }
+  return customDateRange.value
+}
+
+const analysisScopeLabel = computed(
+  () => analysisScopeOptions.find((item) => item.value === analysisScope.value)?.label || '综合复盘'
+)
+const analysisScopeDescription = computed(() => analysisScopeDescriptionMap[analysisScope.value])
+const analysisScopeEmptyDescription = computed(
+  () => analysisScopeEmptyDescriptionMap[analysisScope.value]
+)
+const quickPrompts = computed(() => quickPromptMap[analysisScope.value])
+const scopeHistory = computed(() =>
+  history.value.filter((item) => (item.scope || 'COMPREHENSIVE') === analysisScope.value)
+)
+const periodLabel = computed(
+  () => datePresetOptions.find((item) => item.value === datePreset.value)?.label || '自定义'
+)
+const selectedDateRangeLabel = computed(() => {
+  const range = resolvePresetRange(datePreset.value)
+  return range[0] === range[1] ? range[1] : `${range[0]} 至 ${range[1]}`
+})
 const generating = computed(() => reportStatus.value === 'preparing')
 const streaming = computed(() => streamingReportStatuses.includes(reportStatus.value))
 const reportBusy = computed(() => runningReportStatuses.includes(reportStatus.value))
-const busy = computed(() => calculating.value || reportBusy.value)
+const busy = computed(() => calculating.value || reportBusy.value || loadingConversation.value)
 const activeAnalysis = computed(() =>
   workspaceView.value === 'system' ? systemAnalysis.value : session.value
 )
@@ -468,6 +704,50 @@ const analysisDateRange = computed(() => {
   return activeAnalysis.value.beginDate === activeAnalysis.value.endDate
     ? activeAnalysis.value.endDate
     : `${activeAnalysis.value.beginDate} 至 ${activeAnalysis.value.endDate}`
+})
+const analysisMetrics = computed(() => {
+  const analysis = activeAnalysis.value
+  const missingValue = analysis?.missingMarketDataCount ?? '--'
+  if (analysisScope.value === 'POSITION') {
+    return [
+      { label: '当前持仓', value: analysis?.positionCount ?? '--' },
+      {
+        label: '持仓代理收益',
+        value:
+          analysis?.dashboard?.performance?.currentPositionProxyReturn == null
+            ? '--'
+            : `${analysis.dashboard.performance.currentPositionProxyReturn.toFixed(2)}%`
+      },
+      { label: '持仓股票', value: analysis?.stockCount ?? '--' },
+      { label: '行情日线', value: analysis?.marketBarCount ?? '--' },
+      { label: '行情缺失', value: missingValue, warning: Boolean(analysis?.missingMarketDataCount) }
+    ]
+  }
+  if (analysisScope.value === 'CLOSED_POSITION') {
+    return [
+      { label: '清仓样本', value: analysis?.dashboard?.trades?.closedPositionCount ?? '--' },
+      { label: '盈利样本', value: analysis?.dashboard?.trades?.profitableClosedCount ?? '--' },
+      { label: '亏损样本', value: analysis?.dashboard?.trades?.losingClosedCount ?? '--' },
+      { label: '涉及股票', value: analysis?.stockCount ?? '--' },
+      { label: '行情缺失', value: missingValue, warning: Boolean(analysis?.missingMarketDataCount) }
+    ]
+  }
+  if (analysisScope.value === 'TRADE_RECORD') {
+    return [
+      { label: '全部流水', value: analysis?.tradeCount ?? '--' },
+      { label: '证券买卖', value: analysis?.dashboard?.trades?.securityTradeCount ?? '--' },
+      { label: '买入笔数', value: analysis?.dashboard?.trades?.buyCount ?? '--' },
+      { label: '卖出笔数', value: analysis?.dashboard?.trades?.sellCount ?? '--' },
+      { label: '涉及股票', value: analysis?.stockCount ?? '--' }
+    ]
+  }
+  return [
+    { label: '当前持仓', value: analysis?.positionCount ?? '--' },
+    { label: '周期成交', value: analysis?.tradeCount ?? '--' },
+    { label: '涉及股票', value: analysis?.stockCount ?? '--' },
+    { label: '行情日线', value: analysis?.marketBarCount ?? '--' },
+    { label: '行情缺失', value: missingValue, warning: Boolean(analysis?.missingMarketDataCount) }
+  ]
 })
 const reportContent = computed(
   () => messages.value.find((item) => item.type === 'assistant' && item.content)?.content || ''
@@ -532,7 +812,8 @@ const reportStatusLabel = computed(() => {
 })
 const reportStatusDescription = computed(() => {
   if (reportStatusDetail.value) return reportStatusDetail.value
-  if (reportStatus.value === 'preparing') return '正在汇总持仓、成交和行情数据并创建分析会话'
+  if (reportStatus.value === 'preparing')
+    return `正在汇总${analysisScopeLabel.value}数据并创建独立分析会话`
   if (reportStatus.value === 'connecting') return '数据包已经准备完成，正在建立流式连接'
   if (reportStatus.value === 'waiting')
     return '连接保持正常，模型正在读取数据，首段内容返回后会自动显示'
@@ -551,11 +832,13 @@ const reportStatusDescription = computed(() => {
     return '连接意外关闭，已经生成的内容会保留，可以重新生成'
   if (reportStatus.value === 'failed') return '请求未能完成，请检查模型配置或网络后重新生成'
   return configStatus.value?.configured
-    ? `选择分析周期后生成 AI ${periodLabel.value}`
+    ? `选择分析区间后生成 AI ${analysisScopeLabel.value}${periodLabel.value}`
     : '完成 AI 密钥和模型配置后即可生成报告'
 })
 const reportPrimaryActionLabel = computed(() =>
-  reportContent.value ? `重新生成 AI ${periodLabel.value}` : `生成 AI ${periodLabel.value}`
+  reportContent.value
+    ? `重新生成${analysisScopeLabel.value}${periodLabel.value}`
+    : `生成${analysisScopeLabel.value}${periodLabel.value}`
 )
 const showReportTiming = computed(() => Boolean(reportStartedAt.value))
 const reportElapsedLabel = computed(() => {
@@ -579,6 +862,19 @@ const getPeriodLabel = (value: StockAiAnalysisPeriod) => {
 }
 
 const disableFutureDate = (date: Date) => date.getTime() > Date.now()
+
+const applyDatePreset = (preset: DatePreset) => {
+  datePreset.value = preset
+  if (preset === 'CUSTOM') {
+    period.value = 'CUSTOM'
+    return
+  }
+  customDateRange.value = resolvePresetRange(preset)
+  if (preset === 'TODAY') period.value = 'DAILY'
+  else if (preset === 'WEEK') period.value = 'WEEKLY'
+  else if (preset === 'MONTH') period.value = 'MONTHLY'
+  else period.value = 'CUSTOM'
+}
 
 const formatElapsed = (seconds: number) => {
   if (seconds < 60) return `${seconds} 秒`
@@ -653,6 +949,7 @@ const validateDateRange = () => {
 }
 
 const buildAnalysisRequest = () => ({
+  scope: analysisScope.value,
   period: period.value,
   beginDate: period.value === 'CUSTOM' ? customDateRange.value[0] : undefined,
   endDate: period.value === 'CUSTOM' ? customDateRange.value[1] : undefined
@@ -665,10 +962,25 @@ const runSystemAnalysis = async () => {
     systemAnalysis.value = await StockAiAnalysisApi.analyzeDashboard(buildAnalysisRequest())
     workspaceView.value = 'system'
     dashboardView.value = 'overview'
-    message.success('系统数据分析已更新')
+    message.success(`${analysisScopeLabel.value}系统分析已更新`)
   } finally {
     calculating.value = false
   }
+}
+
+const buildSubmittedSummary = (created: StockAiAnalysisSessionVO) => {
+  const scopeLabel =
+    analysisScopeOptions.find((item) => item.value === created.scope)?.label || '综合复盘'
+  if (created.scope === 'POSITION') {
+    return `已提交${scopeLabel}${periodLabel.value}数据包 · ${created.positionCount} 个持仓 · ${created.marketBarCount} 条日线`
+  }
+  if (created.scope === 'CLOSED_POSITION') {
+    return `已提交${scopeLabel}${periodLabel.value}数据包 · ${created.dashboard.trades.closedPositionCount} 个清仓样本 · ${created.marketBarCount} 条日线`
+  }
+  if (created.scope === 'TRADE_RECORD') {
+    return `已提交${scopeLabel}${periodLabel.value}数据包 · ${created.tradeCount} 条流水 · ${created.dashboard.trades.securityTradeCount} 笔证券买卖`
+  }
+  return `已提交综合复盘${periodLabel.value}数据包 · ${created.positionCount} 个持仓 · ${created.tradeCount} 条流水 · ${created.marketBarCount} 条日线`
 }
 
 const generateAiReport = async () => {
@@ -681,18 +993,17 @@ const generateAiReport = async () => {
   streamPurpose.value = 'report'
   resetReportRun()
   updateReportStatus('preparing')
+  aiInputContext.value = ''
   try {
     const created = await StockAiAnalysisApi.createSession(buildAnalysisRequest())
     session.value = created
+    aiInputContext.value = created.initialPrompt
+    sidePanelView.value = 'context'
     messages.value = []
     activeConversationId.value = created.conversationId
     activeTitle.value = created.title.replace('[股票AI] ', '')
     loadHistory().catch(() => undefined)
-    await sendStream(
-      created.initialPrompt,
-      `已提交${getPeriodLabel(created.period)}数据包 · ${created.positionCount} 个持仓 · ${created.tradeCount} 条成交 · ${created.marketBarCount} 条日线`,
-      'report'
-    )
+    await sendStream(created.initialPrompt, buildSubmittedSummary(created), 'report')
   } catch {
     if (reportStatus.value === 'preparing') {
       updateReportStatus('failed', '分析会话创建失败，请检查服务状态后重新生成')
@@ -843,14 +1154,21 @@ const handleCompositionEnd = () => {
 const openHistory = async (item: StockAiAnalysisHistoryVO) => {
   if (item.conversationId === activeConversationId.value) return
   abortCurrentStream(false)
+  analysisScope.value = item.scope || 'COMPREHENSIVE'
+  await nextTick()
   reportStartedAt.value = undefined
   reportFinishedAt.value = undefined
   lastResponseAt.value = undefined
   updateReportStatus('idle')
   loadingConversation.value = true
   session.value = undefined
+  aiInputContext.value = ''
   messages.value = []
-  period.value = item.period
+  period.value = 'CUSTOM'
+  datePreset.value = 'CUSTOM'
+  if (item.beginDate && item.endDate) {
+    customDateRange.value = [item.beginDate, item.endDate]
+  }
   activeConversationId.value = item.conversationId
   activeTitle.value = item.title.replace('[股票AI] ', '')
   try {
@@ -858,15 +1176,23 @@ const openHistory = async (item: StockAiAnalysisHistoryVO) => {
       StockAiAnalysisApi.getSession(item.conversationId),
       ChatMessageApi.getChatMessageListByConversationId(item.conversationId)
     ])
-    session.value = snapshot
     const chatMessages = list as ChatMessageVO[]
+    aiInputContext.value =
+      chatMessages.find((chatMessage) => chatMessage.type === 'user')?.content ||
+      snapshot.initialPrompt ||
+      ''
+    session.value = snapshot
+    if (snapshot.beginDate && snapshot.endDate) {
+      customDateRange.value = [snapshot.beginDate, snapshot.endDate]
+    }
+    sidePanelView.value = 'context'
     let initialUserFound = false
     messages.value = chatMessages.map((chatMessage) => {
       if (chatMessage.type === 'user' && !initialUserFound) {
         initialUserFound = true
         return {
           ...chatMessage,
-          content: `已提交${getPeriodLabel(item.period)}数据包`
+          content: `已提交${analysisScopeLabel.value}${getPeriodLabel(item.period)}数据包`
         }
       }
       return chatMessage
@@ -896,6 +1222,7 @@ const deleteHistory = async (item: StockAiAnalysisHistoryVO) => {
     activeConversationId.value = undefined
     activeTitle.value = ''
     session.value = undefined
+    aiInputContext.value = ''
     messages.value = []
     reportStartedAt.value = undefined
     reportFinishedAt.value = undefined
@@ -911,11 +1238,26 @@ const copyReport = async () => {
   message.success('报告已复制')
 }
 
+const copyAiInput = async () => {
+  if (!aiInputContext.value) return
+  await copy(aiInputContext.value)
+  message.success('AI 输入数据已复制')
+}
+
 const downloadReport = () => {
   const date = session.value?.endDate || new Date().toISOString().slice(0, 10)
   download.markdown(
     new Blob([reportContent.value], { type: 'text/markdown;charset=utf-8' }),
-    `股票操作${periodLabel.value}-${date}.md`
+    `股票操作-${analysisScopeLabel.value}-${periodLabel.value}-${date}.md`
+  )
+}
+
+const downloadAiInput = () => {
+  if (!aiInputContext.value) return
+  const date = session.value?.endDate || new Date().toISOString().slice(0, 10)
+  download.markdown(
+    new Blob([aiInputContext.value], { type: 'text/markdown;charset=utf-8' }),
+    `股票操作AI输入数据-${analysisScopeLabel.value}-${periodLabel.value}-${date}.md`
   )
 }
 
@@ -1041,6 +1383,66 @@ h2 {
 
 .custom-range-picker {
   width: 270px !important;
+}
+
+.analysis-controls {
+  display: grid;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--el-bg-color);
+  border-right: 1px solid var(--el-border-color-light);
+  border-bottom: 1px solid var(--el-border-color-light);
+  border-left: 1px solid var(--el-border-color-light);
+}
+
+.scope-control,
+.date-control,
+.date-preset-list {
+  display: flex;
+  align-items: center;
+}
+
+.scope-control,
+.date-control {
+  gap: 10px;
+  min-width: 0;
+}
+
+.control-label {
+  flex: 0 0 64px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--el-text-color-secondary);
+}
+
+.scope-description,
+.selected-range {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+
+.scope-description {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.date-preset-list {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.date-preset-list :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
+
+.selected-range {
+  min-width: 160px;
+  font-variant-numeric: tabular-nums;
+}
+
+.system-analysis-button {
+  margin-left: auto;
 }
 
 .configuration-warning {
@@ -1317,7 +1719,7 @@ h2 {
 
 .analysis-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 38%);
   min-height: 650px;
   margin-top: 8px;
   overflow: hidden;
@@ -1569,9 +1971,26 @@ h2 {
   height: 32px;
 }
 
-.history-panel {
+.report-side-panel {
+  display: grid;
+  grid-template-rows: 48px minmax(0, 1fr);
   min-width: 0;
   border-left: 1px solid var(--el-border-color-light);
+}
+
+.side-panel-switch {
+  display: flex;
+  align-items: center;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.side-panel-switch :deep(.el-segmented) {
+  width: 100%;
+}
+
+.history-panel {
+  min-width: 0;
 }
 
 .history-heading {
@@ -1670,6 +2089,15 @@ h2 {
     max-width: 520px;
   }
 
+  .date-control {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .system-analysis-button {
+    margin-left: 74px;
+  }
+
   .metric-strip {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -1697,6 +2125,29 @@ h2 {
     justify-content: flex-start;
     width: 100%;
     max-width: none;
+  }
+
+  .scope-control,
+  .date-control {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .control-label {
+    flex-basis: auto;
+  }
+
+  .scope-control :deep(.el-segmented) {
+    width: 100%;
+  }
+
+  .scope-description,
+  .selected-range {
+    min-width: 0;
+  }
+
+  .system-analysis-button {
+    margin-left: 0;
   }
 
   .analysis-workspace {
@@ -1727,7 +2178,7 @@ h2 {
     width: 100%;
   }
 
-  .history-panel {
+  .report-side-panel {
     border-top: 1px solid var(--el-border-color-light);
     border-left: 0;
   }
@@ -1758,6 +2209,26 @@ h2 {
 
   .custom-range-picker {
     width: 100% !important;
+  }
+
+  .analysis-controls {
+    padding: 10px;
+  }
+
+  .scope-control :deep(.el-segmented__item-label) {
+    font-size: 11px;
+  }
+
+  .date-preset-list {
+    width: 100%;
+  }
+
+  .date-preset-list :deep(.el-button) {
+    flex: 1 0 calc(33.333% - 6px);
+  }
+
+  .system-analysis-button {
+    width: 100%;
   }
 
   .report-control__status {

@@ -118,8 +118,34 @@ export interface StockPositionAssetSnapshotVO {
   positionCount: number
   missingValuationCount: number
   positionSnapshotJson: string | null
+  positions?: StockPositionAssetSnapshotItemVO[]
   source: string
   updateTime: string
+}
+
+export interface StockPositionAssetSnapshotItemVO {
+  stockId: number
+  market: FinanceMarket | null
+  code: string | null
+  name: string | null
+  quantity: number | null
+  averageCostPrice: number | null
+  latestPrice: number | null
+  holdingAsset: number | null
+  holdingProfitLoss: number | null
+  positionRatio: number | null
+}
+
+export interface StockPositionAssetSnapshotUpdateVO {
+  id: number
+  snapshotDate: string
+  totalAsset: string
+  positions: Array<{
+    stockId: number
+    quantity: string
+    averageCostPrice: string
+    latestPrice?: string
+  }>
 }
 
 export const StockPositionApi = {
@@ -164,5 +190,11 @@ export const StockPositionApi = {
     request.get<StockPositionAssetSnapshotVO[]>({
       url: '/finance/stock-position-account/snapshot/trend',
       params
+    }),
+
+  updateAssetSnapshot: (data: StockPositionAssetSnapshotUpdateVO) =>
+    request.put<StockPositionAssetSnapshotVO[]>({
+      url: '/finance/stock-position-account/snapshot/update',
+      data
     })
 }

@@ -862,6 +862,8 @@
     v-model="assetSnapshotVisible"
     :snapshots="assetSnapshots"
     :loading="assetSnapshotLoading"
+    :stock-options="tracks"
+    @updated="handleAssetSnapshotsUpdated"
   />
 
   <StockPortfolioImportDialog ref="importDialogRef" @success="handleImportSuccess" />
@@ -1462,6 +1464,10 @@ const openAssetSnapshotHistory = async () => {
   } finally {
     assetSnapshotLoading.value = false
   }
+}
+
+const handleAssetSnapshotsUpdated = (snapshots: StockPositionAssetSnapshotVO[]) => {
+  assetSnapshots.value = snapshots
 }
 
 const submitPosition = async () => {

@@ -339,35 +339,76 @@
       </el-tab-pane>
 
       <el-tab-pane label="研报" name="reports">
-        <MarketResultHeader
-          label="外部研报"
-          :result="reportResult"
-          :loading="reportLoading"
-          @refresh="loadReports"
-        />
+        <div class="section-heading">
+          <div class="information-filters">
+            <el-input
+              v-model="reportQuery.keyword"
+              clearable
+              placeholder="搜索标题、机构、作者或摘要"
+              @keyup.enter="handleReportSearch"
+              @clear="handleReportSearch"
+            >
+              <template #prefix><Icon icon="ep:search" /></template>
+              <template #append>
+                <el-button aria-label="搜索研报" @click="handleReportSearch">
+                  <Icon icon="ep:search" />
+                </el-button>
+              </template>
+            </el-input>
+          </div>
+          <div class="section-actions">
+            <span class="section-hint">
+              {{ reportResult?.data?.total ?? 0 }} 条 · 最近同步
+              {{ formatDateTime(reportResult?.fetchedAt) }}
+            </span>
+            <el-tooltip content="从行情源增量同步研报，已有数据不会被清空" placement="top">
+              <el-button circle aria-label="同步研报" :loading="reportSyncing" @click="syncReports">
+                <Icon icon="ep:refresh" />
+              </el-button>
+            </el-tooltip>
+          </div>
+        </div>
+        <MarketResultMeta :result="reportResult" label="本地同步研报" />
         <el-table
           v-loading="reportLoading"
           :data="reportResult?.data?.list ?? []"
+          row-key="id"
           stripe
           table-layout="fixed"
-          empty-text="暂无研报"
+          empty-text="暂无本地研报，可点击右上角同步"
         >
-          <el-table-column label="报告日期" prop="reportDate" min-width="120" />
-          <el-table-column label="机构" prop="institution" min-width="140" />
-          <el-table-column label="评级" min-width="100">
-            <template #default="{ row }">{{ row.rating || '--' }}</template>
+          <el-table-column label="报告日期" prop="publishedAt" width="128" sortable>
+            <template #default="{ row }">{{ formatReportDate(row.publishedAt) }}</template>
           </el-table-column>
-          <el-table-column label="作者" min-width="120">
-            <template #default="{ row }">{{ row.author || '--' }}</template>
+          <el-table-column label="机构" prop="source" min-width="140" sortable />
+          <el-table-column label="评级" prop="announcementType" min-width="108" sortable>
+            <template #default="{ row }">
+              <el-tag size="small" type="warning" effect="plain">
+                {{ row.announcementType || '未评级' }}
+              </el-tag>
+            </template>
           </el-table-column>
-          <el-table-column label="标题" min-width="340" show-overflow-tooltip>
+          <el-table-column label="标题与作者摘要" prop="title" min-width="400" sortable>
             <template #default="{ row }">
               <el-link :href="row.url" target="_blank" type="primary" :underline="false">
                 {{ row.title }}
               </el-link>
+              <div v-if="row.summary" class="report-summary">{{ row.summary }}</div>
             </template>
           </el-table-column>
         </el-table>
+        <div v-if="(reportResult?.data?.total ?? 0) > 0" class="information-pagination">
+          <el-pagination
+            v-model:current-page="reportQuery.pageNo"
+            v-model:page-size="reportQuery.pageSize"
+            :page-sizes="[10, 20, 50]"
+            :total="reportResult?.data?.total ?? 0"
+            layout="total, sizes, prev, pager, next"
+            background
+            @size-change="handleReportPageSizeChange"
+            @current-change="loadReports"
+          />
+        </div>
       </el-tab-pane>
 
       <el-tab-pane label="基本面" name="fundamental">
@@ -548,7 +589,6 @@ import {
   StockInformationLocalVO,
   StockInformationType,
   StockQuoteVO,
-  StockResearchReportVO,
   StockTradingStatus,
   StockTrackVO
 } from '@/api/finance/stock'
@@ -617,7 +657,11 @@ const informationResult = ref<MarketDataResult<PagedResult<StockInformationLocal
 const informationQuery = reactive({ pageNo: 1, pageSize: 20, keyword: '' })
 let informationRequestVersion = 0
 const reportLoading = ref(false)
-const reportResult = ref<MarketDataResult<PagedResult<StockResearchReportVO>>>()
+const reportSyncing = ref(false)
+const reportResult = ref<MarketDataResult<PagedResult<StockInformationLocalVO>>>()
+const reportQuery = reactive({ pageNo: 1, pageSize: 20, keyword: '' })
+let reportRequestVersion = 0
+let reportSyncVersion = 0
 const fundamentalLoading = ref(false)
 const fundamentalResult = ref<MarketDataResult<StockFundamentalVO>>()
 const fundamentalSubTab = ref('overview')
@@ -705,6 +749,7 @@ const resetChartRange = async () => {
 
 const handleTabChange = (name: string | number) => {
   if (name === 'kline' && chartPrices.value.length === 0) loadChart()
+  if (name === 'reports' && !reportResult.value) loadReports()
 }
 
 const disableTrackingStartDate = (date: Date) => dayjs(date).isAfter(dayjs(), 'day')
@@ -786,6 +831,11 @@ const handleDailyPriceChanged = async () => {
   dailyQuery.pageNo = 1
   await Promise.all([loadDailyPrices(), loadChart()])
   emit('changed')
+}
+
+const refreshDailyData = async (changedTrackIds: number[]) => {
+  if (!visible.value || !track.value || !changedTrackIds.includes(track.value.id)) return
+  await Promise.all([loadDailyPrices(), loadChart()])
 }
 
 const deleteDailyPrice = async (record: StockDailyPriceVO) => {
@@ -875,18 +925,68 @@ const handleInformationPageSizeChange = () => {
 
 const loadReports = async () => {
   if (!track.value) return
+  const trackId = track.value.id
+  const currentVersion = ++reportRequestVersion
   reportLoading.value = true
   try {
-    reportResult.value = await StockApi.getResearchReportPage({
-      trackId: track.value.id,
-      pageNo: 1,
-      pageSize: 20
+    const nextResult = await StockApi.getLocalInformationPage({
+      trackId,
+      type: 'RESEARCH',
+      keyword: reportQuery.keyword.trim() || undefined,
+      pageNo: reportQuery.pageNo,
+      pageSize: reportQuery.pageSize
     })
+    if (currentVersion === reportRequestVersion && track.value?.id === trackId) {
+      reportResult.value = nextResult
+    }
   } catch {
-    reportResult.value = unavailableResult('研报加载失败')
+    if (currentVersion === reportRequestVersion && track.value?.id === trackId) {
+      if (!reportResult.value) {
+        reportResult.value = unavailableResult('本地研报加载失败')
+      }
+      message.error('本地研报加载失败，已保留当前结果')
+    }
   } finally {
-    reportLoading.value = false
+    if (currentVersion === reportRequestVersion) {
+      reportLoading.value = false
+    }
   }
+}
+
+const syncReports = async () => {
+  if (!track.value) return
+  const trackId = track.value.id
+  const currentVersion = ++reportSyncVersion
+  reportSyncing.value = true
+  try {
+    const summary = await StockApi.syncTrackInformation({ trackId, type: 'RESEARCH' })
+    if (currentVersion !== reportSyncVersion || track.value?.id !== trackId) return
+    if (summary.failed > 0) {
+      message.warning('研报同步失败，已保留现有本地数据')
+    } else {
+      message.success(`研报同步完成：新增 ${summary.inserted} 条，更新 ${summary.updated} 条`)
+    }
+    reportQuery.pageNo = 1
+    await loadReports()
+  } catch {
+    if (currentVersion === reportSyncVersion && track.value?.id === trackId) {
+      message.error('研报同步失败，已保留现有本地数据')
+    }
+  } finally {
+    if (currentVersion === reportSyncVersion) {
+      reportSyncing.value = false
+    }
+  }
+}
+
+const handleReportSearch = () => {
+  reportQuery.pageNo = 1
+  void loadReports()
+}
+
+const handleReportPageSizeChange = () => {
+  reportQuery.pageNo = 1
+  void loadReports()
 }
 
 const loadFundamental = async () => {
@@ -903,6 +1003,8 @@ const loadFundamental = async () => {
 
 const open = (value: StockTrackVO) => {
   informationRequestVersion++
+  reportRequestVersion++
+  reportSyncVersion++
   track.value = value
   trackingPeriodForm.trackingStartDate = value.trackingStartDate || undefined
   trackingPeriodForm.trackingEndDate = value.trackingEndDate || undefined
@@ -911,6 +1013,11 @@ const open = (value: StockTrackVO) => {
   informationQuery.pageNo = 1
   informationQuery.keyword = ''
   informationResult.value = undefined
+  reportQuery.pageNo = 1
+  reportQuery.keyword = ''
+  reportResult.value = undefined
+  reportLoading.value = false
+  reportSyncing.value = false
   fundamentalSubTab.value = 'overview'
   dailyQuery.pageNo = 1
   chartDateRange.value = undefined
@@ -920,7 +1027,6 @@ const open = (value: StockTrackVO) => {
   loadChart()
   loadQuote()
   loadInformation()
-  loadReports()
   loadFundamental()
 }
 
@@ -954,6 +1060,9 @@ const formatLargeAmount = (value?: number | null) => {
 const formatDateTime = (value?: string | null) =>
   value ? dayjs(value).format('YYYY-MM-DD HH:mm:ss') : '--'
 
+const formatReportDate = (value?: string | null) =>
+  value ? dayjs(value).format('YYYY-MM-DD') : '--'
+
 const changeClass = (value?: number | null) => {
   if (value === undefined || value === null || value === 0) return 'price-flat'
   return value > 0 ? 'price-up' : 'price-down'
@@ -962,7 +1071,7 @@ const changeClass = (value?: number | null) => {
 const resultMessage = <T,>(result?: MarketDataResult<T>) =>
   result?.message || (result?.status === 'UNAVAILABLE' ? '外部数据暂不可用' : '暂无数据')
 
-defineExpose({ open, loadDailyPrices })
+defineExpose({ open, loadDailyPrices, refreshDailyData })
 </script>
 
 <style scoped>
@@ -1150,6 +1259,16 @@ defineExpose({ open, loadDailyPrices })
   margin-top: 14px;
   justify-content: flex-end;
   overflow-x: auto;
+}
+
+.report-summary {
+  margin-top: 4px;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--el-text-color-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .row-actions {

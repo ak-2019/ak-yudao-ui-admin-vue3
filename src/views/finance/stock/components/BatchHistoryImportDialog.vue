@@ -73,7 +73,7 @@
 
 <script setup lang="ts">
 import dayjs from 'dayjs'
-import { StockApi, StockTrackVO } from '@/api/finance/stock'
+import { StockApi, StockDailyPriceHistoryImportVO, StockTrackVO } from '@/api/finance/stock'
 import { financeDateRangeShortcuts } from '@/views/finance/utils/dateShortcuts'
 
 defineOptions({ name: 'FinanceStockBatchHistoryImportDialog' })
@@ -120,7 +120,7 @@ const canStart = computed(
 )
 
 const emit = defineEmits<{
-  success: []
+  success: [changedTrackIds: number[]]
 }>()
 
 const createRow = (track: StockTrackVO): BatchRow => ({
@@ -162,33 +162,47 @@ const validateRange = (): [string, string] | null => {
   return [beginDate, endDate]
 }
 
+const applyImportResult = (row: BatchRow, result: StockDailyPriceHistoryImportVO) => {
+  row.fetchedCount = result.fetchedCount
+  row.importedCount = result.importedCount
+  row.updatedCount = result.updatedCount
+  row.backfilledCount = result.backfilledCount
+  row.skippedCount = result.skippedCount
+  const changed = result.importedCount > 0 || result.updatedCount > 0 || result.backfilledCount > 0
+  row.status = changed ? 'SUCCESS' : 'SKIPPED'
+  row.resultMessage = changed ? '更新完成' : '区间内数据已是最新'
+}
+
 const updateRow = async (row: BatchRow, beginDate: string, endDate: string) => {
   row.status = 'RUNNING'
   row.resultMessage = '正在获取历史行情'
   try {
-    const preview = await StockApi.previewDailyPriceHistory({
-      trackId: row.track.id,
-      beginDate,
-      endDate
-    })
-    if (!preview.data) {
-      row.status = 'FAILED'
-      row.resultMessage = preview.message || '历史行情不可用'
-      return
-    }
-    row.fetchedCount = preview.data.fetchedCount
-    const overwriteDates = overwriteManual.value
-      ? preview.data.items.filter((item) => item.canOverwrite).map((item) => item.tradeDate)
-      : []
-    if (
-      preview.data.importableCount === 0 &&
-      preview.data.backfillableCount === 0 &&
-      overwriteDates.length === 0
-    ) {
-      row.status = 'SKIPPED'
-      row.skippedCount = preview.data.skippedCount
-      row.resultMessage = '区间内没有可新增、更新或回填的记录'
-      return
+    let overwriteDates: string[] = []
+    if (overwriteManual.value) {
+      const preview = await StockApi.previewDailyPriceHistory({
+        trackId: row.track.id,
+        beginDate,
+        endDate
+      })
+      if (!preview.data) {
+        row.status = 'FAILED'
+        row.resultMessage = preview.message || '历史行情不可用'
+        return
+      }
+      row.fetchedCount = preview.data.fetchedCount
+      overwriteDates = preview.data.items
+        .filter((item) => item.canOverwrite)
+        .map((item) => item.tradeDate)
+      if (
+        preview.data.importableCount === 0 &&
+        preview.data.backfillableCount === 0 &&
+        overwriteDates.length === 0
+      ) {
+        row.status = 'SKIPPED'
+        row.skippedCount = preview.data.skippedCount
+        row.resultMessage = '区间内没有可新增、更新或回填的记录'
+        return
+      }
     }
     const result = await StockApi.importDailyPriceHistory({
       trackId: row.track.id,
@@ -196,13 +210,7 @@ const updateRow = async (row: BatchRow, beginDate: string, endDate: string) => {
       endDate,
       overwriteDates
     })
-    row.fetchedCount = result.fetchedCount
-    row.importedCount = result.importedCount
-    row.updatedCount = result.updatedCount
-    row.backfilledCount = result.backfilledCount
-    row.skippedCount = result.skippedCount
-    row.status = 'SUCCESS'
-    row.resultMessage = '更新完成'
+    applyImportResult(row, result)
   } catch (error) {
     row.status = 'FAILED'
     row.resultMessage = resolveErrorMessage(error)
@@ -225,7 +233,10 @@ const runBatch = async () => {
     for (const row of rows.value) {
       await updateRow(row, beginDate, endDate)
     }
-    if (changedStockCount.value > 0) emit('success')
+    const changedTrackIds = rows.value
+      .filter((row) => row.importedCount > 0 || row.updatedCount > 0 || row.backfilledCount > 0)
+      .map((row) => row.track.id)
+    if (changedTrackIds.length > 0) emit('success', changedTrackIds)
     if (failedCount.value > 0) {
       message.warning(
         `批量更新完成：${changedStockCount.value} 只股票有数据变更，${failedCount.value} 只失败`

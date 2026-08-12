@@ -35,7 +35,9 @@
         <Icon icon="ep:upload-filled" class="upload-icon" />
         <div class="el-upload__text">拖入 Excel，或<em>选择文件</em></div>
         <template #tip>
-          <div class="upload-tip">按前三个 Sheet 的中文表头识别，空行会自动忽略</div>
+          <div class="upload-tip"
+            >按前三个 Sheet 的中文表头识别，空行和持仓末尾汇总行会自动忽略</div
+          >
         </template>
       </el-upload>
 

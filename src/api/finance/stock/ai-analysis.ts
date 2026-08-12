@@ -1,8 +1,10 @@
 import request from '@/config/axios'
 
 export type StockAiAnalysisPeriod = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'CUSTOM'
+export type StockAiAnalysisScope = 'COMPREHENSIVE' | 'POSITION' | 'CLOSED_POSITION' | 'TRADE_RECORD'
 
 export interface StockAiAnalysisSessionCreateReqVO {
+  scope: StockAiAnalysisScope
   period: StockAiAnalysisPeriod
   beginDate?: string
   endDate?: string
@@ -171,6 +173,7 @@ export interface StockAiAnalysisDashboardVO {
 }
 
 export interface StockSystemAnalysisVO {
+  scope: StockAiAnalysisScope
   period: StockAiAnalysisPeriod
   beginDate: string
   endDate: string
@@ -193,6 +196,7 @@ export interface StockAiAnalysisSessionVO extends StockSystemAnalysisVO {
 export interface StockAiAnalysisHistoryVO {
   conversationId: number
   title: string
+  scope: StockAiAnalysisScope
   period: StockAiAnalysisPeriod
   model: string
   createTime: string

@@ -8,12 +8,12 @@
       :active-tracking-count="activeTrackingCount"
       :quote-issue-count="activeGroupQuoteIssueCount"
       :can-manage-tags="canUpdateGroup"
-      :loading="loading"
+      :loading="loading || refreshLoading"
       :search-loading="searchLoading"
       :search-hint="stockSearchHint"
       :search-options="searchOptions"
       @manage-tags="stockTagManageRef?.open()"
-      @refresh="getList"
+      @refresh="handleWorkspaceRefresh"
       @search="searchStocks"
       @add="openStockPoolAdd"
       @image-add="stockImageAddRef?.open()"
@@ -654,6 +654,7 @@ interface StockTableRef {
 const message = useMessage()
 const workspaceCache = useStockWorkspaceCache()
 const loading = ref(false)
+const refreshLoading = ref(false)
 const searchLoading = ref(false)
 const syncIndustryLoading = ref(false)
 const syncInformationLoading = ref(false)
@@ -699,8 +700,6 @@ let searchTimer: ReturnType<typeof setTimeout> | undefined
 let searchRequestId = 0
 let listRequestId = 0
 let columnSortable: Sortable | undefined
-
-const QUOTE_CONCURRENCY = 4
 
 const marketLabels: Record<FinanceMarket, string> = {
   SSE: '沪市',
@@ -1091,57 +1090,56 @@ const visibleAverageCumulativeChange = computed(() => {
   return values.reduce((sum, value) => sum + value, 0) / values.length
 })
 
-const loadQuotesProgressively = async (requestId: number, tracks: StockTrackVO[]) => {
-  let nextIndex = 0
-  const loadNext = async () => {
-    while (nextIndex < tracks.length) {
-      const track = tracks[nextIndex++]
-      if (!track) return
-      let quote: MarketDataResult<StockQuoteVO> | undefined
-      try {
-        quote = await StockApi.getQuote(track.id)
-      } catch {
-        quote = undefined
-      }
-      if (requestId !== listRequestId) return
-      const row = list.value.find((item) => item.id === track.id)
-      if (!row) continue
-      if (quote !== undefined) row.quote = quote
-      row.quoteLoading = false
-    }
+const loadWorkspaceSupplements = async (
+  requestId: number,
+  tracks: StockTrackVO[],
+  refreshQuotes: boolean
+) => {
+  const [statisticsResult, priceChangesResult, quotesResult] = await Promise.allSettled([
+    StockApi.getWinRate(),
+    StockApi.getPriceChangeList(),
+    tracks.length > 0
+      ? StockApi.getQuotes({ trackIds: tracks.map((track) => track.id), refresh: refreshQuotes })
+      : Promise.resolve([])
+  ])
+  if (requestId !== listRequestId) return
+  if (statisticsResult.status === 'fulfilled') {
+    globalStatistics.value = statisticsResult.value
   }
-  await Promise.all(
-    Array.from({ length: Math.min(QUOTE_CONCURRENCY, tracks.length) }, () => loadNext())
+  const priceChanges = new Map(
+    priceChangesResult.status === 'fulfilled'
+      ? priceChangesResult.value.map((item) => [item.trackId, item])
+      : []
   )
+  const quotes = new Map(
+    quotesResult.status === 'fulfilled'
+      ? quotesResult.value.map((item) => [item.trackId, item.quote])
+      : []
+  )
+  list.value.forEach((row) => {
+    const priceChange = priceChanges.get(row.id)
+    if (priceChange) row.priceChange = priceChange
+    const quote = quotes.get(row.id)
+    if (quote && (quote.status !== 'UNAVAILABLE' || !row.quote)) row.quote = quote
+    row.quoteLoading = false
+  })
 }
 
-const getList = async () => {
+const getList = async (refreshQuotes = false) => {
   const requestId = ++listRequestId
   let tracksToLoad: StockTrackVO[] = []
   loading.value = true
   try {
     const previousGroupId = activeGroupId.value
     const previousRows = new Map(list.value.map((row) => [row.id, row]))
-    const [workspaceResult, statisticsResult, priceChangesResult] = await Promise.allSettled([
-      workspaceCache.load(),
-      StockApi.getWinRate(),
-      StockApi.getPriceChangeList()
-    ])
+    const workspaceResult = await workspaceCache.load()
     if (requestId !== listRequestId) return
-    globalStatistics.value =
-      statisticsResult.status === 'fulfilled' ? statisticsResult.value : undefined
-    if (workspaceResult.status === 'rejected') throw workspaceResult.reason
-    groups.value = workspaceResult.value.groups
-    tags.value = workspaceResult.value.tags
+    groups.value = workspaceResult.groups
+    tags.value = workspaceResult.tags
     activeGroupId.value = groups.value.some((group) => group.id === previousGroupId)
       ? previousGroupId
       : groups.value[0]?.id
-    const priceChanges = new Map(
-      priceChangesResult.status === 'fulfilled'
-        ? priceChangesResult.value.map((item) => [item.trackId, item])
-        : []
-    )
-    tracksToLoad = workspaceResult.value.tracks
+    tracksToLoad = workspaceResult.tracks
     list.value = tracksToLoad.map((track) => {
       const previousRow = previousRows.get(track.id)
       return {
@@ -1150,13 +1148,29 @@ const getList = async () => {
         tags: track.tags ?? [],
         quote: previousRow?.quote,
         quoteLoading: true,
-        priceChange: priceChanges.get(track.id) ?? previousRow?.priceChange
+        priceChange: previousRow?.priceChange
       }
     })
   } finally {
     if (requestId === listRequestId) loading.value = false
   }
-  if (requestId === listRequestId) void loadQuotesProgressively(requestId, tracksToLoad)
+  if (requestId !== listRequestId) return
+  const supplementPromise = loadWorkspaceSupplements(requestId, tracksToLoad, refreshQuotes)
+  if (refreshQuotes) {
+    await supplementPromise
+  } else {
+    void supplementPromise
+  }
+}
+
+const handleWorkspaceRefresh = async () => {
+  refreshLoading.value = true
+  workspaceCache.invalidate()
+  try {
+    await getList(true)
+  } finally {
+    refreshLoading.value = false
+  }
 }
 
 const toLocalSearchOption = (stock: StockSearchVO): StockSearchOption => {
@@ -1692,10 +1706,13 @@ const clearTrackSelection = () => {
   selectedTracks.value = []
 }
 
-const handleBatchUpdated = async () => {
+const handleBatchUpdated = async (changedTrackIds?: number[]) => {
   clearTrackSelection()
   workspaceCache.invalidate()
-  await getList()
+  await Promise.all([
+    getList(),
+    changedTrackIds?.length ? detailRef.value?.refreshDailyData(changedTrackIds) : undefined
+  ])
 }
 
 const formatPrice = (value?: number | null) =>

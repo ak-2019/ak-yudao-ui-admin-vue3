@@ -495,6 +495,16 @@ export interface StockQuoteVO {
   dataStatus: MarketDataStatus
 }
 
+export interface StockQuoteBatchParams {
+  trackIds: number[]
+  refresh?: boolean
+}
+
+export interface StockQuoteBatchVO {
+  trackId: number
+  quote: MarketDataResult<StockQuoteVO>
+}
+
 export interface TradingCalendarVO {
   market: FinanceMarket
   tradeDate: string
@@ -789,6 +799,12 @@ export const StockApi = {
     request.get<MarketDataResult<StockQuoteVO>>({
       url: '/finance/stock-market/quote',
       params: { trackId }
+    }),
+
+  getQuotes: (data: StockQuoteBatchParams) =>
+    request.post<StockQuoteBatchVO[]>({
+      url: '/finance/stock-market/quote-batch',
+      data
     }),
 
   getTradingDay: (trackId: number, tradeDate: string) =>

@@ -51,24 +51,36 @@
       <el-empty v-else description="暂无资产快照，请在账户工作台保存今日快照" />
     </div>
 
-    <el-table v-if="snapshots.length > 0" :data="recentSnapshots" stripe size="small" max-height="280">
+    <el-table
+      v-if="snapshots.length > 0"
+      :data="recentSnapshots"
+      stripe
+      size="small"
+      max-height="280"
+    >
       <el-table-column prop="snapshotDate" label="日期" width="120" />
       <el-table-column prop="totalAsset" label="总资产" min-width="130" align="right">
         <template #default="{ row }">{{ formatAmount(row.totalAsset) }}</template>
       </el-table-column>
       <el-table-column prop="dailyProfitRate" label="当日收益" min-width="110" align="right">
         <template #default="{ row }">
-          <span :class="changeClass(row.dailyProfitRate)">{{ formatPercent(row.dailyProfitRate) }}</span>
+          <span :class="changeClass(row.dailyProfitRate)">{{
+            formatDailyReturn(row.dailyProfitRate)
+          }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="cumulativeReturnRate" label="累计收益" min-width="110" align="right">
         <template #default="{ row }">
-          <span :class="changeClass(row.cumulativeReturnRate)">{{ formatPercent(row.cumulativeReturnRate) }}</span>
+          <span :class="changeClass(row.cumulativeReturnRate)">{{
+            formatPercent(row.cumulativeReturnRate)
+          }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="maxDrawdownRate" label="最大回撤" min-width="110" align="right">
         <template #default="{ row }">
-          <span :class="changeClass(row.maxDrawdownRate)">{{ formatPercent(row.maxDrawdownRate) }}</span>
+          <span :class="changeClass(row.maxDrawdownRate)">{{
+            formatPercent(row.maxDrawdownRate)
+          }}</span>
         </template>
       </el-table-column>
     </el-table>
@@ -79,10 +91,7 @@
 import dayjs from 'dayjs'
 import type { EChartsOption } from 'echarts'
 import { Echart } from '@/components/Echart'
-import {
-  StockPositionApi,
-  type StockPositionAssetSnapshotVO
-} from '@/api/finance/stock/position'
+import { StockPositionApi, type StockPositionAssetSnapshotVO } from '@/api/finance/stock/position'
 
 type RangeKey = '7d' | '30d' | 'all'
 
@@ -143,9 +152,13 @@ const formatAxisDate = (value: string) => dayjs(value).format('MM-DD')
 const formatAmount = (value: number | null | undefined) =>
   value === null || value === undefined
     ? '--'
-    : new Intl.NumberFormat('zh-CN', { minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(value)
+    : new Intl.NumberFormat('zh-CN', { minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(
+        value
+      )
 const formatPercent = (value: number | null | undefined) =>
-  value === null || value === undefined ? '--' : `${value.toFixed(2)}%`
+  value === null || value === undefined ? '--' : `${Number(value).toFixed(2)}%`
+const formatDailyReturn = (value: number | null | undefined) =>
+  value === null || value === undefined ? '基准日' : formatPercent(value)
 const changeClass = (value: number | null | undefined) => ({
   'is-positive': value !== null && value !== undefined && value > 0,
   'is-negative': value !== null && value !== undefined && value < 0
@@ -156,7 +169,12 @@ const loadRange = async (range: RangeKey) => {
   loading.value = true
   try {
     const endDate = dayjs().format('YYYY-MM-DD')
-    const beginDate = range === 'all' ? undefined : dayjs().subtract(range === '7d' ? 6 : 29, 'day').format('YYYY-MM-DD')
+    const beginDate =
+      range === 'all'
+        ? undefined
+        : dayjs()
+            .subtract(range === '7d' ? 6 : 29, 'day')
+            .format('YYYY-MM-DD')
     snapshots.value = await StockPositionApi.getAssetSnapshotTrend({ beginDate, endDate })
   } finally {
     loading.value = false
