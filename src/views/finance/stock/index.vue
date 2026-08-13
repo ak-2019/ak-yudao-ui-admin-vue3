@@ -302,7 +302,13 @@
           <template v-else-if="column.key === 'province'">{{ row.province || '--' }}</template>
           <template v-else-if="column.key === 'city'">{{ row.city || '--' }}</template>
           <template v-else-if="column.key === 'industry'">{{ row.industry || '--' }}</template>
-          <div v-else-if="column.key === 'tags'" class="stock-tags">
+          <button
+            v-else-if="column.key === 'tags'"
+            type="button"
+            class="stock-tags stock-tags--interactive"
+            :aria-label="row.tags.length > 0 ? `编辑${row.name}的标签` : `为${row.name}添加标签`"
+            @click.stop="openTagAssign([row])"
+          >
             <el-tag
               v-for="tag in row.tags"
               :key="tag.id"
@@ -312,8 +318,11 @@
             >
               {{ tag.name }}
             </el-tag>
-            <span v-if="row.tags.length === 0">--</span>
-          </div>
+            <span v-if="row.tags.length === 0" class="stock-tags__empty">
+              <Icon icon="ep:plus" />
+              添加标签
+            </span>
+          </button>
           <template v-else-if="column.key === 'market'">{{ marketLabels[row.market] }}</template>
           <div
             v-else-if="column.key === 'trackingStartDate'"
@@ -2043,6 +2052,39 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   gap: 4px;
   min-height: 24px;
+}
+
+.stock-tags--interactive {
+  width: 100%;
+  padding: 2px 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+}
+
+.stock-tags--interactive:hover :deep(.el-tag) {
+  filter: brightness(0.96);
+}
+
+.stock-tags--interactive:focus-visible {
+  outline: 2px solid var(--el-color-primary-light-5);
+  outline-offset: 2px;
+}
+
+.stock-tags__empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--el-color-primary);
+}
+
+.stock-tags__empty :deep(.el-icon) {
+  flex: none;
 }
 
 .stock-column-header {

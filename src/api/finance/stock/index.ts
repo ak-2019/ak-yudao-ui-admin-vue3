@@ -111,6 +111,7 @@ export interface StockGroupBatchAssignVO {
 export interface StockTagVO {
   id: number
   name: string
+  groupName: string | null
   color: string
   sort: number
   createTime: string
@@ -124,6 +125,7 @@ export interface StockWorkspaceBootstrapVO {
 
 export interface StockTagCreateVO {
   name: string
+  groupName?: string
   color: string
   sort?: number
 }

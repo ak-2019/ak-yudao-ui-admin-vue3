@@ -23,10 +23,12 @@
           class="tag-select"
           :placeholder="mode === 'REMOVE' ? '选择要移除的标签' : '选择或直接输入新标签'"
         >
-          <el-option v-for="tag in tags" :key="tag.id" :label="tag.name" :value="tag.id">
-            <span class="tag-option-dot" :style="{ backgroundColor: tag.color }"></span>
-            <span>{{ tag.name }}</span>
-          </el-option>
+          <el-option-group v-for="group in groupedTags" :key="group.name" :label="group.name">
+            <el-option v-for="tag in group.tags" :key="tag.id" :label="tag.name" :value="tag.id">
+              <span class="tag-option-dot" :style="{ backgroundColor: tag.color }"></span>
+              <span>{{ tag.name }}</span>
+            </el-option>
+          </el-option-group>
         </el-select>
       </el-form-item>
     </el-form>
@@ -111,6 +113,22 @@ const selectedTags = computed(() => {
   )
   return tags.value.filter((tag) => selected.has(tag.id))
 })
+const groupedTags = computed(() => {
+  const groups = new Map<string, StockTagVO[]>()
+  tags.value.forEach((tag) => {
+    const groupName = tag.groupName?.trim() || '未分组'
+    const groupTags = groups.get(groupName) ?? []
+    groupTags.push(tag)
+    groups.set(groupName, groupTags)
+  })
+  return [...groups.entries()]
+    .sort(([first], [second]) => {
+      if (first === '未分组') return 1
+      if (second === '未分组') return -1
+      return first.localeCompare(second, 'zh-CN')
+    })
+    .map(([name, groupTags]) => ({ name, tags: groupTags }))
+})
 const newTagNames = computed(() => {
   const names = new Map<string, string>()
   selectedTagValues.value
@@ -127,7 +145,7 @@ const canSubmit = computed(
     (mode.value === 'REPLACE' || selectedTagValues.value.length > 0)
 )
 const emptySelectionText = computed(() => {
-  if (tags.value.length === 0) return '暂无可用标签，请先在股票页面的“更多”中管理标签'
+  if (tags.value.length === 0) return '暂无可用标签，请先使用股票页面顶部的“管理标签”创建'
   if (mode.value === 'REPLACE') return '不选择标签并保存，将清空这些股票的全部标签'
   return mode.value === 'ADD' ? '请选择要新增的标签' : '请选择要移除的标签'
 })

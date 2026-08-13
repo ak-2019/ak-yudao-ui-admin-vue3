@@ -1,5 +1,5 @@
 <template>
-  <Dialog v-model="dialogVisible" title="管理股票标签" width="720px">
+  <Dialog v-model="dialogVisible" title="管理股票标签" width="880px">
     <div class="tag-create-row">
       <el-input
         v-model="createForm.name"
@@ -8,7 +8,25 @@
         clearable
         @keyup.enter="createTag"
       />
-      <el-color-picker v-model="createForm.color" aria-label="新标签颜色" />
+      <el-select
+        v-model="createForm.groupName"
+        filterable
+        allow-create
+        default-first-option
+        clearable
+        maxlength="32"
+        placeholder="选择或输入分组"
+        aria-label="新标签分组"
+      >
+        <el-option v-for="group in groupOptions" :key="group" :label="group" :value="group" />
+      </el-select>
+      <el-tooltip content="选择常用色或自定义颜色" placement="top">
+        <el-color-picker
+          v-model="createForm.color"
+          :predefine="TAG_COLOR_PALETTE"
+          aria-label="新标签颜色"
+        />
+      </el-tooltip>
       <el-input-number
         v-model="createForm.sort"
         :min="0"
@@ -36,9 +54,29 @@
           <el-input v-model="row.name" maxlength="32" aria-label="标签名称" />
         </template>
       </el-table-column>
+      <el-table-column prop="groupName" label="分组" min-width="170" sortable>
+        <template #default="{ row }">
+          <el-select
+            v-model="row.groupName"
+            filterable
+            allow-create
+            default-first-option
+            clearable
+            maxlength="32"
+            placeholder="未分组"
+            aria-label="标签分组"
+          >
+            <el-option v-for="group in groupOptions" :key="group" :label="group" :value="group" />
+          </el-select>
+        </template>
+      </el-table-column>
       <el-table-column prop="color" label="颜色" width="112" align="center" sortable>
         <template #default="{ row }">
-          <el-color-picker v-model="row.color" aria-label="标签颜色" />
+          <el-color-picker
+            v-model="row.color"
+            :predefine="TAG_COLOR_PALETTE"
+            aria-label="标签颜色"
+          />
         </template>
       </el-table-column>
       <el-table-column prop="sort" label="排序" width="150" align="center" sortable>
@@ -54,7 +92,10 @@
       </el-table-column>
       <el-table-column label="预览" min-width="120" align="center">
         <template #default="{ row }">
-          <el-tag effect="plain" :style="tagStyle(row.color)">{{ row.name || '未命名' }}</el-tag>
+          <div class="tag-preview-cell">
+            <span class="tag-preview-cell__group">{{ row.groupName?.trim() || '未分组' }}</span>
+            <el-tag effect="plain" :style="tagStyle(row.color)">{{ row.name || '未命名' }}</el-tag>
+          </div>
         </template>
       </el-table-column>
       <el-table-column label="操作" width="96" align="center">
@@ -108,11 +149,36 @@ const dialogVisible = ref(false)
 const loading = ref(false)
 const creating = ref(false)
 const editableTags = ref<EditableTag[]>([])
-const createForm = reactive({ name: '', color: '#409EFF', sort: 10 })
+const createForm = reactive({ name: '', groupName: '', color: '#409EFF', sort: 10 })
+const TAG_COLOR_PALETTE = [
+  '#409EFF',
+  '#67C23A',
+  '#E6A23C',
+  '#F56C6C',
+  '#909399',
+  '#00A870',
+  '#ED7B2F',
+  '#D54941',
+  '#7B61FF',
+  '#0F6CBD',
+  '#00838F',
+  '#8D6E63'
+]
 
 const emit = defineEmits<{
   changed: [tags: StockTagVO[]]
 }>()
+
+const groupOptions = computed(() => {
+  const groups = new Set<string>()
+  editableTags.value.forEach((tag) => {
+    const groupName = tag.groupName?.trim()
+    if (groupName) groups.add(groupName)
+  })
+  const pendingGroupName = createForm.groupName.trim()
+  if (pendingGroupName) groups.add(pendingGroupName)
+  return [...groups].sort((first, second) => first.localeCompare(second, 'zh-CN'))
+})
 
 const tagStyle = (color: string) => ({
   color,
@@ -137,6 +203,7 @@ const loadTags = async (notify = false) => {
 const open = async () => {
   dialogVisible.value = true
   createForm.name = ''
+  createForm.groupName = ''
   createForm.color = '#409EFF'
   await loadTags()
 }
@@ -146,7 +213,12 @@ const createTag = async () => {
   if (!name) return
   creating.value = true
   try {
-    await StockApi.createTag({ name, color: createForm.color, sort: createForm.sort })
+    await StockApi.createTag({
+      name,
+      groupName: createForm.groupName.trim(),
+      color: createForm.color,
+      sort: createForm.sort
+    })
     message.success('标签已创建')
     createForm.name = ''
     await loadTags(true)
@@ -160,7 +232,13 @@ const updateTag = async (tag: EditableTag) => {
   if (!name) return
   tag.saving = true
   try {
-    await StockApi.updateTag({ id: tag.id, name, color: tag.color, sort: tag.sort })
+    await StockApi.updateTag({
+      id: tag.id,
+      name,
+      groupName: tag.groupName?.trim() || '',
+      color: tag.color,
+      sort: tag.sort
+    })
     message.success('标签已更新')
     await loadTags(true)
   } finally {
@@ -186,10 +264,26 @@ defineExpose({ open })
 <style scoped>
 .tag-create-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) 48px 150px 40px;
+  grid-template-columns: minmax(160px, 1fr) minmax(160px, 1fr) 48px 140px 40px;
   align-items: center;
   gap: 10px;
   margin-bottom: 16px;
+}
+
+.tag-preview-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.tag-preview-cell__group {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tag-row-actions {
@@ -204,9 +298,15 @@ defineExpose({ open })
     grid-template-columns: minmax(0, 1fr) 48px 40px;
   }
 
-  .tag-create-row :deep(.el-input-number) {
+  .tag-create-row > :deep(.el-select) {
     grid-column: 1 / -1;
     grid-row: 2;
+    width: 100%;
+  }
+
+  .tag-create-row :deep(.el-input-number) {
+    grid-column: 1 / -1;
+    grid-row: 3;
     width: 100%;
   }
 }
