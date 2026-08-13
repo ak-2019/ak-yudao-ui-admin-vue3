@@ -170,14 +170,25 @@
       <el-table-column prop="updateTime" label="更新时间" width="176" sortable="custom">
         <template #default="{ row }">{{ formatDateTime(row.updateTime) }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="104" fixed="right" align="center">
+      <el-table-column label="操作" width="140" fixed="right" align="center">
         <template #default="{ row }">
           <div class="row-actions">
             <el-tooltip
-              v-if="isStockTrade(row.tradeType)"
-              content="编辑成交记录"
+              v-if="isStockTrade(row.tradeType) && row.stockId !== null"
+              content="交易计划"
               placement="top"
             >
+              <el-button
+                link
+                type="success"
+                aria-label="查看或建立交易计划"
+                v-hasPermi="['finance:stock-trade-plan:query']"
+                @click="openTradePlan(row)"
+              >
+                <Icon icon="ep:memo" />
+              </el-button>
+            </el-tooltip>
+            <el-tooltip v-if="isStockTrade(row.tradeType)" content="编辑成交记录" placement="top">
               <el-button
                 link
                 type="primary"
@@ -330,6 +341,7 @@
       </el-button>
     </template>
   </el-dialog>
+  <StockTradePlanDialog ref="tradePlanDialogRef" />
 </template>
 
 <script setup lang="ts">
@@ -350,6 +362,7 @@ import {
   StockTradeType
 } from '@/api/finance/stock/trade-record'
 import StockWorkspaceNav from '../components/StockWorkspaceNav.vue'
+import StockTradePlanDialog from '../components/StockTradePlanDialog.vue'
 
 defineOptions({ name: 'FinanceStockTradeRecord' })
 
@@ -387,6 +400,7 @@ const formVisible = ref(false)
 const formMode = ref<'create' | 'update'>('create')
 const formRef = ref<FormInstance>()
 const formStockOptions = ref<StockSearchVO[]>([])
+const tradePlanDialogRef = ref<InstanceType<typeof StockTradePlanDialog>>()
 const marketLabels: Record<FinanceMarket, string> = {
   SSE: '沪',
   SZSE: '深',
@@ -616,6 +630,16 @@ const openEdit = (row: StockTradeRecordVO) => {
   ]
   formVisible.value = true
   nextTick(() => formRef.value?.clearValidate())
+}
+
+const openTradePlan = (row: StockTradeRecordVO) => {
+  if (row.stockId === null) return
+  tradePlanDialogRef.value?.open({
+    stockId: row.stockId,
+    market: row.market,
+    code: row.code,
+    name: row.stockName
+  })
 }
 
 let stockSearchRequestId = 0

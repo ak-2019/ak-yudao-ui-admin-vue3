@@ -399,9 +399,20 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="104" fixed="right" align="center">
+          <el-table-column label="操作" width="140" fixed="right" align="center">
             <template #default="{ row }">
               <div class="row-actions">
+                <el-tooltip content="交易计划" placement="top">
+                  <el-button
+                    link
+                    type="success"
+                    aria-label="查看或建立交易计划"
+                    v-hasPermi="['finance:stock-trade-plan:query']"
+                    @click="openTradePlan(row)"
+                  >
+                    <Icon icon="ep:memo" />
+                  </el-button>
+                </el-tooltip>
                 <el-tooltip content="编辑持仓" placement="top">
                   <el-button
                     link
@@ -868,6 +879,7 @@
 
   <StockPortfolioImportDialog ref="importDialogRef" @success="handleImportSuccess" />
   <StockDetailDrawer ref="detailRef" @changed="refreshAll" />
+  <StockTradePlanDialog ref="tradePlanDialogRef" />
 </template>
 
 <script setup lang="ts">
@@ -897,6 +909,7 @@ import {
   StockTradeType
 } from '@/api/finance/stock/trade-record'
 import StockDetailDrawer from '../components/StockDetailDrawer.vue'
+import StockTradePlanDialog from '../components/StockTradePlanDialog.vue'
 import StockWorkspaceNav from '../components/StockWorkspaceNav.vue'
 import StockAssetSnapshotDialog from './components/StockAssetSnapshotDialog.vue'
 import StockPortfolioImportDialog from './components/StockPortfolioImportDialog.vue'
@@ -991,6 +1004,7 @@ const formMode = ref<'create' | 'edit'>('create')
 const formRef = ref<FormInstance>()
 const assetFormRef = ref<FormInstance>()
 const detailRef = ref<InstanceType<typeof StockDetailDrawer>>()
+const tradePlanDialogRef = ref<InstanceType<typeof StockTradePlanDialog>>()
 const importDialogRef = ref<InstanceType<typeof StockPortfolioImportDialog>>()
 const positionSort = reactive<{ prop: string; order: SortOrder }>({ prop: '', order: null })
 const closedSort = reactive<{ prop: string; order: SortOrder }>({ prop: '', order: null })
@@ -1519,6 +1533,16 @@ const handleImportSuccess = async () => {
 }
 const openDetail = (row: PositionRow) => {
   if (row.track) detailRef.value?.open(row.track)
+}
+
+const openTradePlan = (row: PositionRow) => {
+  tradePlanDialogRef.value?.open({
+    trackId: row.trackId ?? undefined,
+    stockId: row.stockId,
+    market: row.market,
+    code: row.code,
+    name: row.name
+  })
 }
 const handlePositionSort = ({ prop, order }: SortChange) =>
   Object.assign(positionSort, { prop, order })

@@ -26,6 +26,10 @@
           <Icon icon="ep:list" class="mr-5px" />
           前往成交记录
         </el-button>
+        <el-button @click="goTo('/finance/stock-ai-analysis')">
+          <Icon icon="ep:cpu" class="mr-5px" />
+          前往 AI 决策复盘
+        </el-button>
       </div>
     </div>
     <el-alert
@@ -338,6 +342,75 @@
           </div>
         </section>
       </el-tab-pane>
+
+      <el-tab-pane label="AI 决策复盘" name="ai-review">
+        <section class="guide-section">
+          <div class="section-heading">
+            <div>
+              <h2 class="section-heading__title">三阶段复盘路径</h2>
+              <p class="section-heading__description">
+                先使用现有成交完成确定性复盘，再逐步补充事前计划和个人规则；缺少后续阶段数据不会阻塞前一阶段。
+              </p>
+            </div>
+          </div>
+          <div class="workflow-grid">
+            <div v-for="(step, index) in aiReviewWorkflow" :key="step.title" class="workflow-step">
+              <span class="workflow-step__index">{{ index + 1 }}</span>
+              <div>
+                <div class="workflow-step__title">{{ step.title }}</div>
+                <div class="workflow-step__description">{{ step.description }}</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="guide-section">
+          <div class="section-heading">
+            <div>
+              <h2 class="section-heading__title">工作区与操作</h2>
+              <p class="section-heading__description">
+                系统分析、AI 完整报告和输入证据彼此独立；系统分析不依赖大模型生成结果。
+              </p>
+            </div>
+          </div>
+          <div class="guide-table-wrap">
+            <el-table :data="aiReviewOperations" border stripe table-layout="fixed">
+              <el-table-column label="工作区" width="150">
+                <template #default="{ row }">
+                  <el-tag :type="row.type" effect="plain">{{ row.area }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="name" label="功能 / 按钮" width="190" />
+              <el-table-column prop="prerequisite" label="使用前提" min-width="220" />
+              <el-table-column prop="operation" label="操作方式" min-width="330" />
+              <el-table-column prop="effect" label="结果与口径" min-width="340" />
+            </el-table>
+          </div>
+        </section>
+
+        <section class="guide-section guide-section--last">
+          <div class="section-heading">
+            <div>
+              <h2 class="section-heading__title">结果分层与验收口径</h2>
+              <p class="section-heading__description">
+                页面通过稳定标识区分可复算事实、模型解释和用户确认，所有结论都应能回到证据或数据缺口。
+              </p>
+            </div>
+          </div>
+          <div class="guide-table-wrap">
+            <el-table :data="aiReviewResultLayers" border stripe table-layout="fixed">
+              <el-table-column label="结果层级" width="170">
+                <template #default="{ row }">
+                  <el-tag :type="row.type" effect="plain">{{ row.area }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="content" label="包含内容" min-width="390" />
+              <el-table-column prop="actions" label="核对方式" min-width="350" />
+              <el-table-column prop="note" label="注意事项" min-width="320" />
+            </el-table>
+          </div>
+        </section>
+      </el-tab-pane>
     </el-tabs>
   </ContentWrap>
 </template>
@@ -390,6 +463,118 @@ const router = useRouter()
 const activeTab = ref('stock')
 
 const goTo = (path: string) => router.push(path)
+
+const aiReviewWorkflow: WorkflowStep[] = [
+  {
+    title: '无计划也能复盘',
+    description:
+      '选择分析范围和日期，系统根据 BUY/SELL 成交、持仓快照与本地行情重建交易回合，计算买卖后表现、MFE/MAE、基准超额和收益归因；纪律质量显示不可评分。'
+  },
+  {
+    title: '建立事前交易计划',
+    description:
+      '在股票详情、当前持仓、成交记录或 AI 工作台建立结构化计划。系统按服务端建立时间区分事前事实与事后补录，并将过程纪律与最终盈亏分开审计。'
+  },
+  {
+    title: '生成并核对报告',
+    description:
+      '先查看本期决策与输入证据，再按需生成 AI 完整报告；围绕关键决策继续追问时会继承该报告保存的事实、提示词版本和计算版本。'
+  },
+  {
+    title: '沉淀个人规则',
+    description:
+      '将 AI 草案确认保存或手工创建保持、改进、禁止规则。草案不会自动启用，规则可编辑、启停和归档。'
+  },
+  {
+    title: '下周期闭环',
+    description:
+      '按新周期重建规则执行，核对触发、遵守、违反和无法判断的证据；必要时填写原因人工纠正，并在长期能力中观察重复行为和五维趋势。'
+  }
+]
+
+const aiReviewOperations: OperationGuide[] = [
+  {
+    area: '分析条件',
+    name: '范围 / 日期 / 生成',
+    prerequisite: '至少存在所选范围的持仓快照、已清仓记录或 BUY/SELL 成交之一',
+    operation:
+      '选择综合、持仓、已清仓或交易流水分析，设置日期区间后先刷新系统分析；需要模型解释时再单独生成 AI 报告。',
+    effect:
+      '同一区间事实只批量加载一次；公司行为和资金转账不会混入买卖回合，行情缺口会降低覆盖率而不是补零。',
+    type: 'primary'
+  },
+  {
+    area: '本期决策',
+    name: '决策摘要 / 回合 / 归因',
+    prerequisite: '系统分析已加载',
+    operation:
+      '切换决策摘要、交易回合、收益归因、纪律执行和行为模式；按股票、状态和指标排序筛选，点击行或证据入口下钻。',
+    effect:
+      '展示后端确定性计算结果。无事前计划时交易回合和其他指标仍可使用，纪律项明确显示不可评分。',
+    type: 'success'
+  },
+  {
+    area: '长期能力',
+    name: '趋势节点 / 行为模式',
+    prerequisite: '已保存至少一份综合分析会话',
+    operation:
+      '查看五维能力、超额收益、数据完整度和样本趋势；点击趋势节点、重复错误或正向行为恢复对应历史报告。',
+    effect: '直接读取已保存的 dashboard 快照，不重新请求行情或 AI；样本不足时会显示低样本提示。',
+    type: 'info'
+  },
+  {
+    area: '个人规则',
+    name: '规则库 / 执行重建',
+    prerequisite: '具备个人规则权限；数据库已执行规则表与菜单权限升级脚本',
+    operation:
+      '创建或确认 AI 草案，设置启用状态；选择当前分析周期重建执行，打开证据抽屉核对，系统判定有误时填写理由纠正。',
+    effect:
+      '未触发和无法判断不计入遵守率；人工纠正保留原判定、纠正结果、理由和时间，不覆盖历史规则快照。',
+    type: 'warning'
+  },
+  {
+    area: 'AI 报告',
+    name: '完整报告 / 继续追问',
+    prerequisite: 'AI 模型已配置且可用',
+    operation:
+      '独立生成完整报告，生成中查看流式状态；完成后可围绕关键决策、评分、归因或规则继续提问。',
+    effect:
+      'AI 只解释系统事实并给出带置信度的建议，不覆盖确定性指标。模型不可用时本期决策、长期能力和规则证据仍可查看。',
+    type: 'primary'
+  }
+]
+
+const aiReviewResultLayers: CapabilityGuide[] = [
+  {
+    area: '系统确定性结果',
+    content:
+      '交易回合、逐笔数量轨迹、买卖后 1/3/5/10 交易日表现、MFE、MAE、浮盈回吐、基准超额、五维评分、收益归因和规则执行。',
+    actions: '点击评分、回合、归因项或规则执行查看计算说明、成交、行情、计划和基准证据。',
+    note: '由后端定点计算并携带计算版本；缺少数据返回空值、覆盖率和原因，不使用自然日补齐。',
+    type: 'success'
+  },
+  {
+    area: 'AI 推断',
+    content: '关键决策解释、行为模式归纳、错误原因、改进动作和最多三条下一周期规则草案。',
+    actions: '在完整报告和追问区核对其引用的证据编号、置信度和数据缺口。',
+    note: '规则草案标记为未回测且不会自动启用；AI 不得重算或覆盖系统指标。',
+    type: 'primary'
+  },
+  {
+    area: '用户确认',
+    content: '用户保存的交易计划、确认保存的个人规则以及对规则执行结果的人工纠正。',
+    actions: '从统一计划弹窗、个人规则工作区和执行证据抽屉维护。',
+    note: '服务端时间和审计字段保留事前、事后语义；纠正必须填写原因。',
+    type: 'warning'
+  },
+  {
+    area: '历史快照',
+    content: '报告生成时的提示词版本、计算版本、确定性 dashboard、规则快照和事实覆盖信息。',
+    actions: '从报告历史或长期能力节点恢复，逐项核对当时结果和输入证据。',
+    note: '恢复历史报告不使用当前算法重算，因此后续版本升级不会静默改变旧报告。',
+    type: 'info'
+  }
+]
 
 const stockWorkflow: WorkflowStep[] = [
   {

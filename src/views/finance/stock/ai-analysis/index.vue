@@ -17,6 +17,14 @@
       </div>
 
       <div class="command-actions">
+        <el-button
+          type="primary"
+          plain
+          v-hasPermi="['finance:stock-trade-plan:query']"
+          @click="tradePlanDialogRef?.open()"
+        >
+          <Icon icon="ep:memo" class="mr-5px" />交易计划
+        </el-button>
         <el-dropdown trigger="click">
           <el-button circle title="AI 配置">
             <Icon icon="ep:setting" />
@@ -139,14 +147,31 @@
 
     <template v-if="workspaceView === 'system'">
       <div class="analysis-view-switch">
-        <el-segmented v-model="dashboardView" :options="dashboardViewOptions" />
+        <el-segmented v-model="systemView" :options="systemViewOptions" />
         <span>系统规则与公式计算结果，不由 AI 生成</span>
       </div>
 
-      <StockAiDashboardPanel
-        :key="dashboardView"
-        :dashboard="systemAnalysis?.dashboard"
-        :mode="dashboardView"
+      <template v-if="systemView === 'dashboard'">
+        <div class="dashboard-view-switch">
+          <el-segmented v-model="dashboardView" :options="dashboardViewOptions" />
+        </div>
+        <StockAiDashboardPanel
+          :key="dashboardView"
+          :dashboard="systemAnalysis?.dashboard"
+          :mode="dashboardView"
+        />
+      </template>
+      <StockAiCapabilityTrend
+        v-else-if="systemView === 'capability'"
+        @open-history="openHistoryByConversationId"
+      />
+      <StockAiRulePanel
+        v-else
+        :current-conversation-id="activeConversationId"
+        :report-content="reportContent"
+        :begin-date="activeAnalysis?.beginDate || resolvePresetRange(datePreset)[0]"
+        :end-date="activeAnalysis?.endDate || resolvePresetRange(datePreset)[1]"
+        :period="period"
       />
     </template>
 
@@ -374,6 +399,7 @@
         </aside>
       </div>
     </main>
+    <StockTradePlanDialog ref="tradePlanDialogRef" @saved="handleTradePlanSaved" />
   </div>
 </template>
 
@@ -390,8 +416,11 @@ import {
   type StockSystemAnalysisVO
 } from '@/api/finance/stock/ai-analysis'
 import MarkdownView from '@/components/MarkdownView/index.vue'
+import StockAiCapabilityTrend from './components/StockAiCapabilityTrend.vue'
 import StockAiDashboardPanel from './components/StockAiDashboardPanel.vue'
 import StockAiInputContextPanel from './components/StockAiInputContextPanel.vue'
+import StockAiRulePanel from './components/StockAiRulePanel.vue'
+import StockTradePlanDialog from '../components/StockTradePlanDialog.vue'
 import StockWorkspaceNav from '../components/StockWorkspaceNav.vue'
 import download from '@/utils/download'
 import { formatDate } from '@/utils/formatTime'
@@ -405,7 +434,8 @@ const message = useMessage()
 const { copy } = useClipboard({ legacy: true })
 
 type WorkspaceView = 'system' | 'report'
-type DashboardView = 'overview' | 'stocks' | 'behavior' | 'risk'
+type SystemView = 'dashboard' | 'capability' | 'rules'
+type DashboardView = 'overview' | 'episodes' | 'stocks' | 'attribution' | 'discipline'
 type SidePanelView = 'context' | 'history'
 type DatePreset = 'TODAY' | 'WEEK' | 'MONTH' | 'LAST_5' | 'LAST_20' | 'YEAR' | 'CUSTOM'
 type ReportRunStatus =
@@ -427,6 +457,7 @@ interface ScopeWorkspaceState {
   datePreset: DatePreset
   customDateRange: [string, string]
   workspaceView: WorkspaceView
+  systemView: SystemView
   dashboardView: DashboardView
   sidePanelView: SidePanelView
   systemAnalysis?: StockSystemAnalysisVO
@@ -455,11 +486,17 @@ const workspaceOptions = [
   { label: '系统数据分析', value: 'system' },
   { label: 'AI 完整报告', value: 'report' }
 ]
+const systemViewOptions = [
+  { label: '本期决策', value: 'dashboard' },
+  { label: '长期能力', value: 'capability' },
+  { label: '个人规则', value: 'rules' }
+]
 const dashboardViewOptions = [
-  { label: '分析总览', value: 'overview' },
-  { label: '个股复盘', value: 'stocks' },
-  { label: '交易行为', value: 'behavior' },
-  { label: '风险诊断', value: 'risk' }
+  { label: '决策摘要', value: 'overview' },
+  { label: '交易回合', value: 'episodes' },
+  { label: '逐股表现', value: 'stocks' },
+  { label: '收益归因', value: 'attribution' },
+  { label: '纪律与数据', value: 'discipline' }
 ]
 const sidePanelOptions = [
   { label: 'AI 输入数据', value: 'context' },
@@ -529,6 +566,7 @@ const createScopeWorkspace = (): ScopeWorkspaceState => ({
   datePreset: 'WEEK',
   customDateRange: [...defaultCustomRange],
   workspaceView: 'system',
+  systemView: 'dashboard',
   dashboardView: 'overview',
   sidePanelView: 'history',
   aiInputContext: '',
@@ -562,6 +600,10 @@ const customDateRange = computed({
 const workspaceView = computed({
   get: () => currentScopeWorkspace.value.workspaceView,
   set: (value: WorkspaceView) => (currentScopeWorkspace.value.workspaceView = value)
+})
+const systemView = computed({
+  get: () => currentScopeWorkspace.value.systemView,
+  set: (value: SystemView) => (currentScopeWorkspace.value.systemView = value)
 })
 const dashboardView = computed({
   get: () => currentScopeWorkspace.value.dashboardView,
@@ -632,6 +674,7 @@ const loadingHistory = ref(false)
 const loadingConversation = ref(false)
 const abortController = ref<AbortController>()
 const messageViewport = ref<HTMLElement>()
+const tradePlanDialogRef = ref<InstanceType<typeof StockTradePlanDialog>>()
 const isComposing = ref(false)
 const statusClock = ref(Date.now())
 let statusTimer: number | undefined
@@ -968,6 +1011,10 @@ const runSystemAnalysis = async () => {
   }
 }
 
+const handleTradePlanSaved = async () => {
+  if (systemAnalysis.value && !busy.value) await runSystemAnalysis()
+}
+
 const buildSubmittedSummary = (created: StockAiAnalysisSessionVO) => {
   const scopeLabel =
     analysisScopeOptions.find((item) => item.value === created.scope)?.label || '综合复盘'
@@ -1152,7 +1199,10 @@ const handleCompositionEnd = () => {
 }
 
 const openHistory = async (item: StockAiAnalysisHistoryVO) => {
-  if (item.conversationId === activeConversationId.value) return
+  if (item.conversationId === activeConversationId.value) {
+    workspaceView.value = 'report'
+    return
+  }
   abortCurrentStream(false)
   analysisScope.value = item.scope || 'COMPREHENSIVE'
   await nextTick()
@@ -1213,6 +1263,19 @@ const openHistory = async (item: StockAiAnalysisHistoryVO) => {
   } finally {
     loadingConversation.value = false
   }
+}
+
+const openHistoryByConversationId = async (conversationId: number) => {
+  let item = history.value.find((historyItem) => historyItem.conversationId === conversationId)
+  if (!item) {
+    await loadHistory()
+    item = history.value.find((historyItem) => historyItem.conversationId === conversationId)
+  }
+  if (!item) {
+    message.warning('对应历史分析已删除或不可访问')
+    return
+  }
+  await openHistory(item)
 }
 
 const deleteHistory = async (item: StockAiAnalysisHistoryVO) => {
@@ -1546,6 +1609,17 @@ h2 {
 .analysis-view-switch > span {
   font-size: 12px;
   color: var(--el-text-color-secondary);
+}
+
+.dashboard-view-switch {
+  display: flex;
+  justify-content: flex-start;
+  min-height: 50px;
+  padding: 8px 14px;
+  background: var(--el-bg-color);
+  border-right: 1px solid var(--el-border-color-light);
+  border-bottom: 1px solid var(--el-border-color-light);
+  border-left: 1px solid var(--el-border-color-light);
 }
 
 .warning-tooltip {

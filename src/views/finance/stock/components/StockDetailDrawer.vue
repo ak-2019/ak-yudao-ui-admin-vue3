@@ -8,7 +8,17 @@
             >{{ track.symbol }} · {{ marketLabels[track.market] }}</div
           >
         </div>
-        <el-tag effect="plain">跟踪编号 {{ track.id }}</el-tag>
+        <div class="drawer-title__actions">
+          <el-button
+            type="primary"
+            plain
+            v-hasPermi="['finance:stock-trade-plan:query']"
+            @click="openTradePlan"
+          >
+            <Icon icon="ep:memo" class="mr-5px" />交易计划
+          </el-button>
+          <el-tag effect="plain">跟踪编号 {{ track.id }}</el-tag>
+        </div>
       </div>
     </template>
 
@@ -568,6 +578,7 @@
     />
     <DailyPriceForm ref="dailyPriceFormRef" @success="handleDailyPriceChanged" />
     <HistoryImportDialog ref="historyImportDialogRef" @success="handleDailyPriceChanged" />
+    <StockTradePlanDialog ref="tradePlanDialogRef" />
   </el-drawer>
 </template>
 
@@ -598,6 +609,7 @@ import HistoryImportDialog from './HistoryImportDialog.vue'
 import MarketResultHeader from './MarketResultHeader.vue'
 import MarketResultMeta from './MarketResultMeta.vue'
 import ShareholderCountChart from './ShareholderCountChart.vue'
+import StockTradePlanDialog from './StockTradePlanDialog.vue'
 import StockTechnicalAnalysisChart from './StockTechnicalAnalysisChart.vue'
 
 defineOptions({ name: 'FinanceStockDetailDrawer' })
@@ -612,6 +624,7 @@ const activeTab = ref<DetailTab>('manual')
 const track = ref<StockTrackVO>()
 const dailyPriceFormRef = ref<InstanceType<typeof DailyPriceForm>>()
 const historyImportDialogRef = ref<InstanceType<typeof HistoryImportDialog>>()
+const tradePlanDialogRef = ref<InstanceType<typeof StockTradePlanDialog>>()
 const emit = defineEmits<{
   changed: []
 }>()
@@ -1030,6 +1043,17 @@ const open = (value: StockTrackVO) => {
   loadFundamental()
 }
 
+const openTradePlan = () => {
+  if (!track.value) return
+  tradePlanDialogRef.value?.open({
+    trackId: track.value.id,
+    stockId: track.value.stockId,
+    market: track.value.market,
+    code: track.value.code,
+    name: track.value.name
+  })
+}
+
 const formatPrice = (value?: number | null) =>
   value === undefined || value === null ? '--' : value.toFixed(2)
 
@@ -1080,6 +1104,12 @@ defineExpose({ open, loadDailyPrices, refreshDailyData })
 .row-actions {
   display: flex;
   align-items: center;
+}
+
+.drawer-title__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .drawer-title,

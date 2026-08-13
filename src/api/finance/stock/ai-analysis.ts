@@ -160,6 +160,238 @@ export interface StockAiAnalysisEventVO {
   evidenceId: string
 }
 
+export type StockTradeEpisodeStatus = 'OPEN' | 'CLOSED' | 'INCOMPLETE' | 'INVALID'
+export type StockTradeSide = 'BUY' | 'SELL'
+export type StockDecisionDimension =
+  | 'STOCK_SELECTION'
+  | 'ENTRY'
+  | 'EXIT'
+  | 'POSITION'
+  | 'DISCIPLINE'
+export type StockDecisionScoreStatus = 'SCOREABLE' | 'LOW_SAMPLE' | 'NOT_SCORABLE'
+export type StockDecisionType = 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL'
+export type StockTradePlanCheckStatus = 'ADHERED' | 'VIOLATED' | 'NOT_JUDGABLE'
+export type StockAttributionCategory =
+  | 'MARKET'
+  | 'INDUSTRY_STYLE'
+  | 'STOCK_EXCESS'
+  | 'TIMING'
+  | 'POSITION'
+  | 'FEES'
+  | 'CASH_FLOW'
+  | 'UNATTRIBUTED'
+export type StockAttributionStatus = 'EXACT' | 'DERIVED' | 'FALLBACK' | 'UNAVAILABLE'
+
+export interface StockTradeFillVO {
+  tradeId: number | null
+  stockId: number | null
+  side: StockTradeSide
+  tradeDate: string | null
+  tradeTime: string | null
+  price: number | null
+  quantity: number | null
+  matchedQuantity: number | null
+  unmatchedQuantity: number | null
+  positionQuantityAfter: number | null
+  positionCostAfter: number | null
+  averageCostAfter: number | null
+  realizedProfitLoss: number | null
+  totalFee: number | null
+  analysisRange: boolean
+  evidenceId: string
+  issues: string[]
+}
+
+export interface StockTradeEpisodeVO {
+  episodeId: string
+  tenantId: number
+  userId: number
+  stockId: number | null
+  status: StockTradeEpisodeStatus
+  beginDate: string | null
+  endDate: string | null
+  totalBuyQuantity: number | null
+  totalSellQuantity: number | null
+  remainingQuantity: number | null
+  remainingCost: number | null
+  realizedProfitLoss: number | null
+  totalFee: number | null
+  analysisTradeCount: number
+  startedBeforeAnalysisRange: boolean
+  closedAfterAnalysisRange: boolean
+  fills: StockTradeFillVO[]
+  issues: string[]
+}
+
+export interface StockTradeHorizonPerformanceVO {
+  tradingDay: number
+  observationDate: string | null
+  observationClose: number | null
+  stockReturnRate: number | null
+  benchmarkReturnRate: number | null
+  excessReturnRate: number | null
+  sampleCount: number
+  coverageRate: number | null
+  evidenceIds: string[]
+  issues: string[]
+}
+
+export interface StockTradeFillPerformanceVO {
+  evidenceId: string
+  tradeEvidenceId: string
+  side: StockTradeSide
+  tradeDate: string | null
+  tradePrice: number | null
+  sampleCount: number
+  coverageRate: number | null
+  horizons: StockTradeHorizonPerformanceVO[]
+}
+
+export interface StockTradeMetricCoverageVO {
+  expectedHoldingTradingDays: number
+  availableHoldingTradingDays: number
+  expectedPostTradeNodes: number
+  availableStockNodes: number
+  availableBenchmarkNodes: number
+  stockHoldingCoverageRate: number | null
+  stockNodeCoverageRate: number | null
+  benchmarkNodeCoverageRate: number | null
+}
+
+export interface StockTradeDecisionMetricVO {
+  calculationVersion: string
+  episodeId: string
+  evidenceId: string
+  stockId: number | null
+  valuationDate: string | null
+  valuationClose: number | null
+  averageBuyPrice: number | null
+  averageSellPrice: number | null
+  realizedProfitLoss: number | null
+  unrealizedProfitLoss: number | null
+  grossProfitLoss: number | null
+  totalFee: number | null
+  netProfitLoss: number | null
+  episodeReturnRate: number | null
+  benchmarkReturnRate: number | null
+  excessReturnRate: number | null
+  mfeRate: number | null
+  maeRate: number | null
+  maxFloatingProfit: number | null
+  maxProfitGivebackAmount: number | null
+  maxProfitGivebackRate: number | null
+  holdingTradingDays: number
+  sampleCount: number
+  coverageRate: number | null
+  benchmark: {
+    name: string | null
+    code: string | null
+    fallbackReason: string | null
+    evidenceId: string | null
+  } | null
+  dataCoverage: StockTradeMetricCoverageVO | null
+  fillPerformances: StockTradeFillPerformanceVO[]
+  evidenceIds: string[]
+  issues: string[]
+}
+
+export interface StockDecisionDimensionVO {
+  dimension: StockDecisionDimension
+  status: StockDecisionScoreStatus
+  score: number | null
+  sampleCount: number
+  coverageRate: number | null
+  positiveFactors: string[]
+  negativeFactors: string[]
+  evidenceIds: string[]
+  calculationVersion: string
+}
+
+export interface StockTradePlanCheckVO {
+  field: string
+  status: StockTradePlanCheckStatus
+  plannedValue: string | null
+  actualValue: string | null
+  explanation: string
+  evidenceIds: string[]
+}
+
+export interface StockTradePlanAiFactVO {
+  field: string
+  content: string
+  confidence: string
+  warning: string
+  evidenceId: string
+}
+
+export interface StockTradePlanAuditVO {
+  calculationVersion: string
+  episodeId: string
+  stockId: number | null
+  planId: number | null
+  planStatus: string | null
+  firstTradeTime: string | null
+  establishedTime: string | null
+  planModifiedTime: string | null
+  reviewModifiedTime: string | null
+  preTradePlan: boolean
+  structuredPlanTrusted: boolean
+  checkCount: number
+  adheredCount: number
+  violatedCount: number
+  notJudgableCount: number
+  adherenceRate: number | null
+  coverageRate: number | null
+  checks: StockTradePlanCheckVO[]
+  aiInterpretationFacts: StockTradePlanAiFactVO[]
+  evidenceIds: string[]
+  issues: string[]
+}
+
+export interface StockKeyDecisionVO {
+  episodeId: string
+  stockId: number | null
+  type: StockDecisionType
+  impactAmount: number | null
+  impactRate: number | null
+  excessReturnRate: number | null
+  summary: string
+  evidenceIds: string[]
+}
+
+export interface StockAttributionItemVO {
+  category: StockAttributionCategory
+  status: StockAttributionStatus
+  amount: number | null
+  proportion: number | null
+  includedInProfitLoss: boolean
+  sampleCount: number
+  coverageRate: number | null
+  explanation: string
+  evidenceIds: string[]
+}
+
+export interface StockPerformanceAttributionVO {
+  calculationVersion: string
+  totalProfitLoss: number | null
+  explainedProfitLoss: number | null
+  reconciliationDifference: number | null
+  cashFlowAmount: number | null
+  items: StockAttributionItemVO[]
+  issues: string[]
+}
+
+export interface StockDecisionDataCoverageVO {
+  episodeCount: number
+  metricCount: number
+  scoreableEpisodeCount: number
+  averageCoverageRate: number | null
+  stockHoldingCoverageRate: number | null
+  stockNodeCoverageRate: number | null
+  benchmarkNodeCoverageRate: number | null
+  issues: string[]
+}
+
 export interface StockAiAnalysisDashboardVO {
   promptVersion: string
   account: StockAiAnalysisAccountVO
@@ -170,6 +402,14 @@ export interface StockAiAnalysisDashboardVO {
   stocks: StockAiAnalysisStockVO[]
   risks: StockAiAnalysisRiskVO[]
   events: StockAiAnalysisEventVO[]
+  calculationVersion?: string | null
+  episodes?: StockTradeEpisodeVO[]
+  decisionMetrics?: StockTradeDecisionMetricVO[]
+  decisionQuality?: StockDecisionDimensionVO[]
+  planAudits?: StockTradePlanAuditVO[]
+  keyDecisions?: StockKeyDecisionVO[]
+  attribution?: StockPerformanceAttributionVO | null
+  dataCoverage?: StockDecisionDataCoverageVO | null
 }
 
 export interface StockSystemAnalysisVO {
@@ -204,6 +444,44 @@ export interface StockAiAnalysisHistoryVO {
   endDate: string | null
 }
 
+export type StockAiCapabilityDimension =
+  | 'STOCK_SELECTION'
+  | 'ENTRY'
+  | 'EXIT'
+  | 'POSITION'
+  | 'DISCIPLINE'
+
+export interface StockAiCapabilityTrendPointVO {
+  conversationId: number
+  title: string
+  scope: StockAiAnalysisScope
+  period: StockAiAnalysisPeriod
+  beginDate: string
+  endDate: string
+  scores: Partial<Record<StockAiCapabilityDimension, number | null>>
+  scoreStatuses: Partial<Record<StockAiCapabilityDimension, string>>
+  averageScore: number | null
+  excessReturn: number | null
+  dataQualityScore: number | null
+  episodeCount: number
+  coverageRate: number | null
+  lowSample: boolean
+}
+
+export interface StockAiBehaviorPatternVO {
+  text: string
+  occurrenceCount: number
+  conversationIds: number[]
+  firstDate: string | null
+  lastDate: string | null
+}
+
+export interface StockAiCapabilityTrendVO {
+  points: StockAiCapabilityTrendPointVO[]
+  repeatedErrors: StockAiBehaviorPatternVO[]
+  positiveBehaviors: StockAiBehaviorPatternVO[]
+}
+
 export const StockAiAnalysisApi = {
   getConfigStatus: () =>
     request.get<StockAiAnalysisConfigStatusVO>({
@@ -234,6 +512,11 @@ export const StockAiAnalysisApi = {
   getHistory: () =>
     request.get<StockAiAnalysisHistoryVO[]>({
       url: '/finance/stock-ai-analysis/history'
+    }),
+
+  getCapabilityTrend: () =>
+    request.get<StockAiCapabilityTrendVO>({
+      url: '/finance/stock-ai-analysis/capability-trend'
     }),
 
   getSession: (conversationId: number) =>
