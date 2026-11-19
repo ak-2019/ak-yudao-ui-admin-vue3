@@ -5,7 +5,7 @@
       <div class="page-identity">
         <div class="page-icon"><Icon icon="ep:magic-stick" /></div>
         <div>
-          <h1>股票操作分析</h1>
+          <h1>股票操作 AI 复盘</h1>
           <div class="model-line">
             <span
               class="status-dot"
@@ -88,7 +88,6 @@
         <el-button
           class="system-analysis-button"
           type="primary"
-          plain
           :loading="calculating"
           :disabled="generating || streaming || loadingConversation"
           v-hasPermi="['finance:stock-ai-analysis:query']"
@@ -107,298 +106,425 @@
       <el-button link type="primary" @click="goToConfig('/ai/console/model')">配置模型</el-button>
     </div>
 
-    <div class="workspace-switch">
-      <el-segmented v-model="workspaceView" :options="workspaceOptions" />
-      <span class="source-label" :class="`source-label--${workspaceView}`">
-        <Icon :icon="workspaceView === 'system' ? 'ep:cpu' : 'ep:magic-stick'" />
-        {{ workspaceSourceText }}
-      </span>
-    </div>
-
-    <section class="metric-strip">
-      <div class="metric-item metric-item--period">
-        <span class="metric-label">{{
-          workspaceView === 'system' ? '系统分析区间' : 'AI 报告区间'
-        }}</span>
-        <strong>{{ analysisDateRange }}</strong>
-      </div>
-      <div
-        v-for="item in analysisMetrics"
-        :key="item.label"
-        class="metric-item"
-        :class="{ 'metric-item--warning': item.warning }"
-      >
-        <span class="metric-label">{{ item.label }}</span>
-        <strong>{{ item.value }}</strong>
-      </div>
-    </section>
-
-    <div v-if="activeAnalysis?.warnings?.length" class="data-warning-line">
-      <Icon icon="ep:info-filled" />
-      <el-tooltip placement="bottom" :show-after="200">
-        <template #content>
-          <div class="warning-tooltip">
-            <div v-for="warning in activeAnalysis.warnings" :key="warning">{{ warning }}</div>
-          </div>
-        </template>
-        <span>本次数据有 {{ activeAnalysis.warnings.length }} 项完整性说明</span>
-      </el-tooltip>
-    </div>
-
-    <template v-if="workspaceView === 'system'">
-      <div class="analysis-view-switch">
-        <el-segmented v-model="systemView" :options="systemViewOptions" />
-        <span>系统规则与公式计算结果，不由 AI 生成</span>
-      </div>
-
-      <template v-if="systemView === 'dashboard'">
-        <div class="dashboard-view-switch">
-          <el-segmented v-model="dashboardView" :options="dashboardViewOptions" />
+    <section class="research-workspace">
+      <aside class="analysis-nav-panel" aria-label="AI 复盘分析导航">
+        <div class="analysis-nav-heading">
+          <span>分析导航</span>
+          <small>选择一个任务进入主画布</small>
         </div>
-        <StockAiDashboardPanel
-          :key="dashboardView"
-          :dashboard="systemAnalysis?.dashboard"
-          :mode="dashboardView"
-        />
-      </template>
-      <StockAiCapabilityTrend
-        v-else-if="systemView === 'capability'"
-        @open-history="openHistoryByConversationId"
-      />
-      <StockAiRulePanel
-        v-else
-        :current-conversation-id="activeConversationId"
-        :report-content="reportContent"
-        :begin-date="activeAnalysis?.beginDate || resolvePresetRange(datePreset)[0]"
-        :end-date="activeAnalysis?.endDate || resolvePresetRange(datePreset)[1]"
-        :period="period"
-      />
-    </template>
-
-    <main v-else class="report-workspace">
-      <section class="report-control" :class="`report-control--${reportStatusTone}`">
-        <div class="report-control__status">
-          <span class="report-status-icon" :class="{ 'report-status-icon--active': reportBusy }">
-            <Icon :icon="reportStatusIcon" />
-          </span>
-          <div class="report-control__copy">
-            <div class="report-status-title">
-              <strong>{{ reportStatusTitle }}</strong>
-              <el-tag size="small" effect="plain" :type="reportStatusTagType">
-                {{ reportStatusLabel }}
-              </el-tag>
-            </div>
-            <p>{{ reportStatusDescription }}</p>
-            <div v-if="showReportTiming" class="report-runtime">
-              <span><Icon icon="ep:timer" />已用时 {{ reportElapsedLabel }}</span>
-              <span><Icon icon="ep:connection" />{{ reportResponseActivity }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="report-control__actions">
-          <el-button v-if="streaming" type="danger" plain @click="stopStream">
-            <Icon icon="ep:video-pause" class="mr-5px" />
-            停止生成
-          </el-button>
-          <el-button
-            v-else
-            type="primary"
-            :loading="generating"
-            :disabled="calculating || reportBusy || !configStatus?.configured"
-            v-hasPermi="['finance:stock-ai-analysis:generate']"
-            @click="generateAiReport"
-          >
-            <Icon icon="ep:document-add" class="mr-5px" />
-            {{ reportPrimaryActionLabel }}
-          </el-button>
-        </div>
-        <div v-if="reportBusy" class="report-progress" aria-hidden="true"><span></span></div>
-      </section>
-
-      <div class="analysis-workspace">
-        <section class="conversation-panel">
-          <div class="conversation-heading">
-            <div>
-              <h2>{{ activeTitle || `${analysisScopeLabel} · ${periodLabel}` }}</h2>
-              <span v-if="activeConversationId" class="conversation-id">
-                会话 #{{ activeConversationId }}
+        <div class="analysis-nav-groups">
+          <div v-for="group in analysisNavigationGroups" :key="group.label" class="nav-group">
+            <span class="nav-group-label">{{ group.label }}</span>
+            <button
+              v-for="item in group.items"
+              :key="item.value"
+              type="button"
+              class="analysis-nav-item"
+              :class="{ 'analysis-nav-item--active': activeView === item.value }"
+              :aria-current="activeView === item.value ? 'page' : undefined"
+              @click="setActiveView(item.value)"
+            >
+              <Icon :icon="item.icon" />
+              <span>
+                <strong>{{ item.label }}</strong>
+                <small>{{ item.shortDescription }}</small>
               </span>
-            </div>
-            <div class="report-actions" v-if="reportContent">
-              <el-button text title="复制报告" @click="copyReport">
-                <Icon icon="ep:copy-document" />
-              </el-button>
-              <el-button text title="下载 Markdown" @click="downloadReport">
-                <Icon icon="ep:download" />
-              </el-button>
+              <Icon icon="ep:arrow-right" class="nav-arrow" />
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <main class="analysis-canvas">
+        <header class="canvas-heading">
+          <div class="canvas-identity">
+            <span class="canvas-icon"><Icon :icon="activeViewMeta.icon" /></span>
+            <div>
+              <div class="canvas-title-line">
+                <h2>{{ activeViewMeta.label }}</h2>
+                <span class="source-label" :class="`source-label--${activeViewMeta.source}`">
+                  <Icon :icon="activeViewMeta.sourceIcon" />
+                  {{ activeViewMeta.sourceLabel }}
+                </span>
+              </div>
+              <p>{{ activeViewMeta.description }}</p>
             </div>
           </div>
-
-          <div ref="messageViewport" class="message-viewport" v-loading="loadingConversation">
-            <div v-if="messages.length === 0 && !loadingConversation" class="empty-report">
-              <Icon icon="ep:document-add" />
-              <strong>{{
-                configStatus?.configured
-                  ? `生成 AI ${analysisScopeLabel}${periodLabel}`
-                  : 'AI 报告尚未配置'
-              }}</strong>
-              <span>{{
-                configStatus?.configured
-                  ? analysisScopeEmptyDescription
-                  : '完成密钥和模型配置后即可生成报告'
-              }}</span>
-              <el-button
-                v-if="configStatus?.configured && !reportBusy"
-                type="primary"
-                v-hasPermi="['finance:stock-ai-analysis:generate']"
-                @click="generateAiReport"
-              >
-                <Icon icon="ep:magic-stick" class="mr-5px" />
-                开始生成 {{ analysisScopeLabel }}{{ periodLabel }}
-              </el-button>
-            </div>
-
-            <article
-              v-for="item in messages"
-              :key="`${item.id}-${item.type}-${item.createTime}`"
-              class="message-row"
-              :class="`message-row--${item.type}`"
-            >
-              <template v-if="item.type === 'user'">
-                <div class="user-message">
-                  <span>{{ item.content }}</span>
-                </div>
-              </template>
-              <template v-else>
-                <div class="assistant-message">
-                  <div class="assistant-meta">
-                    <span class="assistant-mark"><Icon icon="ep:magic-stick" /></span>
-                    <span>AI 交易复盘</span>
-                    <span class="message-time">{{ formatMessageTime(item.createTime) }}</span>
-                  </div>
-                  <div v-if="item.reasoningContent" class="reasoning-note">
-                    <el-collapse>
-                      <el-collapse-item title="查看模型返回的分析依据">
-                        <MarkdownView :content="item.reasoningContent" />
-                      </el-collapse-item>
-                    </el-collapse>
-                  </div>
-                  <MarkdownView
-                    v-if="item.content"
-                    class="report-markdown"
-                    :content="item.content"
-                  />
-                  <div v-else-if="streaming" class="thinking-line">
-                    <span></span><span></span><span></span>
-                    {{ reportStatusDescription }}
-                  </div>
-                  <div v-else class="empty-assistant-state">
-                    <Icon :icon="reportStatusIcon" />
-                    {{ reportStatusDescription }}
-                  </div>
-                </div>
-              </template>
-            </article>
-          </div>
-
-          <div
-            class="question-composer"
-            :class="{ 'question-composer--disabled': !activeConversationId }"
+          <el-button
+            v-if="activeView === 'history'"
+            text
+            circle
+            title="刷新历史分析"
+            :loading="loadingHistory"
+            @click="loadHistory"
           >
-            <div
-              v-if="!reportBusy && activeConversationId && reportContent"
-              class="quick-question-row"
-            >
-              <button
-                v-for="prompt in quickPrompts"
-                :key="prompt"
-                type="button"
-                @click="askQuickQuestion(prompt)"
-              >
-                {{ prompt }}
-              </button>
-            </div>
-            <el-input
-              v-model="question"
-              type="textarea"
-              :autosize="{ minRows: 2, maxRows: 5 }"
-              resize="none"
-              maxlength="2000"
-              show-word-limit
-              :disabled="!activeConversationId || reportBusy || !reportContent"
-              :placeholder="reportContent ? '针对报告继续提问' : '报告生成完成后可继续提问'"
-              @keydown.enter.exact.prevent="handleEnter"
-              @compositionstart="isComposing = true"
-              @compositionend="handleCompositionEnd"
-            />
-            <el-button
-              class="send-button"
-              type="primary"
-              circle
-              title="发送问题"
-              :disabled="!canSendQuestion"
-              @click="sendQuestion"
-            >
-              <Icon icon="ep:promotion" />
-            </el-button>
+            <Icon icon="ep:refresh" />
+          </el-button>
+        </header>
+
+        <section class="metric-strip">
+          <div class="metric-item metric-item--period">
+            <span class="metric-label">当前分析区间</span>
+            <strong>{{ analysisDateRange }}</strong>
+          </div>
+          <div
+            v-for="item in analysisMetrics"
+            :key="item.label"
+            class="metric-item"
+            :class="{ 'metric-item--warning': item.warning }"
+          >
+            <span class="metric-label">{{ item.label }}</span>
+            <strong>{{ item.value }}</strong>
           </div>
         </section>
 
-        <aside class="report-side-panel">
-          <div class="side-panel-switch">
-            <el-segmented v-model="sidePanelView" :options="sidePanelOptions" size="small" />
-          </div>
-
-          <StockAiInputContextPanel
-            v-if="sidePanelView === 'context'"
-            :content="aiInputContext"
-            :analysis="session"
-            :loading="generating || loadingConversation"
-            @copy="copyAiInput"
-            @download="downloadAiInput"
-          />
-
-          <div v-else class="history-panel">
-            <div class="history-heading">
-              <div>
-                <h2>{{ analysisScopeLabel }}历史</h2>
-                <span>{{ scopeHistory.length }} 个会话</span>
+        <div v-if="activeAnalysis?.warnings?.length" class="data-warning-line">
+          <Icon icon="ep:info-filled" />
+          <el-tooltip placement="bottom" :show-after="200">
+            <template #content>
+              <div class="warning-tooltip">
+                <div v-for="warning in activeAnalysis.warnings" :key="warning">{{ warning }}</div>
               </div>
-              <el-button text circle title="刷新" :loading="loadingHistory" @click="loadHistory">
-                <Icon icon="ep:refresh" />
-              </el-button>
-            </div>
+            </template>
+            <span>本次数据有 {{ activeAnalysis.warnings.length }} 项完整性说明</span>
+          </el-tooltip>
+        </div>
 
-            <div class="history-list" v-loading="loadingHistory">
-              <button
-                v-for="item in scopeHistory"
-                :key="item.conversationId"
-                type="button"
-                class="history-item"
-                :class="{ 'history-item--active': item.conversationId === activeConversationId }"
-                @click="openHistory(item)"
-              >
-                <span class="history-period">{{ getPeriodLabel(item.period) }}</span>
-                <span class="history-title">{{ item.title.replace('[股票AI] ', '') }}</span>
-                <span class="history-time">{{ formatHistoryTime(item.createTime) }}</span>
+        <StockAiDashboardPanel
+          v-if="activeDashboardView"
+          :key="activeView"
+          :dashboard="systemAnalysis?.dashboard"
+          :mode="activeDashboardView"
+        />
+        <StockAiCapabilityTrend
+          v-else-if="activeView === 'capability'"
+          @open-history="openHistoryByConversationId"
+        />
+        <StockAiRulePanel
+          v-else-if="activeView === 'rules'"
+          :current-conversation-id="activeConversationId"
+          :report-content="reportContent"
+          :begin-date="activeAnalysis?.beginDate || resolvePresetRange(datePreset)[0]"
+          :end-date="activeAnalysis?.endDate || resolvePresetRange(datePreset)[1]"
+          :period="period"
+        />
+
+        <template v-else-if="activeView === 'report'">
+          <div
+            ref="reportPanelRef"
+            class="report-reader"
+            :class="{ 'report-reader--fullscreen': reportFullscreen }"
+          >
+            <section class="report-control" :class="`report-control--${reportStatusTone}`">
+              <div class="report-control__status">
                 <span
-                  class="history-delete"
-                  role="button"
-                  title="删除会话"
-                  @click.stop="deleteHistory(item)"
+                  class="report-status-icon"
+                  :class="{ 'report-status-icon--active': reportBusy }"
                 >
-                  <Icon icon="ep:delete" />
+                  <Icon :icon="reportStatusIcon" />
                 </span>
-              </button>
-              <div v-if="scopeHistory.length === 0 && !loadingHistory" class="history-empty"
-                >暂无{{ analysisScopeLabel }}分析</div
+                <div class="report-control__copy">
+                  <div class="report-status-title">
+                    <strong>{{ reportStatusTitle }}</strong>
+                    <el-tag size="small" effect="plain" :type="reportStatusTagType">
+                      {{ reportStatusLabel }}
+                    </el-tag>
+                  </div>
+                  <p>{{ reportStatusDescription }}</p>
+                  <div v-if="showReportTiming" class="report-runtime">
+                    <span><Icon icon="ep:timer" />已用时 {{ reportElapsedLabel }}</span>
+                    <span><Icon icon="ep:connection" />{{ reportResponseActivity }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="report-control__actions">
+                <el-button v-if="streaming" type="danger" plain @click="stopStream">
+                  <Icon icon="ep:video-pause" class="mr-5px" />
+                  停止生成
+                </el-button>
+                <el-button
+                  v-else
+                  type="primary"
+                  :loading="generating"
+                  :disabled="calculating || reportBusy || !configStatus?.configured"
+                  v-hasPermi="['finance:stock-ai-analysis:generate']"
+                  @click="generateAiReport"
+                >
+                  <Icon icon="ep:document-add" class="mr-5px" />
+                  {{ reportPrimaryActionLabel }}
+                </el-button>
+              </div>
+              <div v-if="reportBusy" class="report-progress" aria-hidden="true"><span></span></div>
+            </section>
+
+            <section class="conversation-panel">
+              <div class="conversation-heading">
+                <div>
+                  <h2>{{ activeTitle || `${analysisScopeLabel} · ${periodLabel}` }}</h2>
+                  <span v-if="activeConversationId" class="conversation-id">
+                    会话 #{{ activeConversationId }}
+                  </span>
+                </div>
+                <div class="report-actions">
+                  <el-button v-if="reportContent" text title="复制报告" @click="copyReport">
+                    <Icon icon="ep:copy-document" />
+                  </el-button>
+                  <el-button
+                    v-if="reportContent"
+                    text
+                    title="下载 Markdown"
+                    @click="downloadReport"
+                  >
+                    <Icon icon="ep:download" />
+                  </el-button>
+                  <el-button
+                    text
+                    :title="reportFullscreen ? '退出全屏（Esc）' : '全屏查看报告'"
+                    :aria-label="reportFullscreen ? '退出全屏' : '全屏查看报告'"
+                    @click="toggleReportFullscreen"
+                  >
+                    <Icon :icon="reportFullscreen ? 'zmdi:fullscreen-exit' : 'zmdi:fullscreen'" />
+                  </el-button>
+                </div>
+              </div>
+
+              <div ref="messageViewport" class="message-viewport" v-loading="loadingConversation">
+                <div v-if="messages.length === 0 && !loadingConversation" class="empty-report">
+                  <Icon icon="ep:document-add" />
+                  <strong>{{
+                    configStatus?.configured
+                      ? `生成 AI ${analysisScopeLabel}${periodLabel}`
+                      : 'AI 报告尚未配置'
+                  }}</strong>
+                  <span>{{
+                    configStatus?.configured
+                      ? analysisScopeEmptyDescription
+                      : '完成密钥和模型配置后即可生成报告'
+                  }}</span>
+                  <el-button
+                    v-if="configStatus?.configured && !reportBusy"
+                    type="primary"
+                    v-hasPermi="['finance:stock-ai-analysis:generate']"
+                    @click="generateAiReport"
+                  >
+                    <Icon icon="ep:magic-stick" class="mr-5px" />
+                    开始生成 {{ analysisScopeLabel }}{{ periodLabel }}
+                  </el-button>
+                </div>
+
+                <article
+                  v-for="item in messages"
+                  :key="`${item.id}-${item.type}-${item.createTime}`"
+                  class="message-row"
+                  :class="`message-row--${item.type}`"
+                >
+                  <template v-if="item.type === 'user'">
+                    <div class="user-message"
+                      ><span>{{ item.content }}</span></div
+                    >
+                  </template>
+                  <template v-else>
+                    <div class="assistant-message">
+                      <div class="assistant-meta">
+                        <span class="assistant-mark"><Icon icon="ep:magic-stick" /></span>
+                        <span>AI 交易复盘</span>
+                        <span class="message-time">{{ formatMessageTime(item.createTime) }}</span>
+                      </div>
+                      <div v-if="item.reasoningContent" class="reasoning-note">
+                        <el-collapse>
+                          <el-collapse-item title="查看模型返回的分析依据">
+                            <MarkdownView :content="item.reasoningContent" />
+                          </el-collapse-item>
+                        </el-collapse>
+                      </div>
+                      <MarkdownView
+                        v-if="item.content"
+                        class="report-markdown"
+                        :content="item.content"
+                      />
+                      <div v-else-if="streaming" class="thinking-line">
+                        <span></span><span></span><span></span>
+                        {{ reportStatusDescription }}
+                      </div>
+                      <div v-else class="empty-assistant-state">
+                        <Icon :icon="reportStatusIcon" />
+                        {{ reportStatusDescription }}
+                      </div>
+                    </div>
+                  </template>
+                </article>
+              </div>
+
+              <div
+                class="question-composer"
+                :class="{ 'question-composer--disabled': !activeConversationId }"
               >
+                <div
+                  v-if="!reportBusy && activeConversationId && reportContent"
+                  class="quick-question-row"
+                >
+                  <button
+                    v-for="prompt in quickPrompts"
+                    :key="prompt"
+                    type="button"
+                    @click="askQuickQuestion(prompt)"
+                  >
+                    {{ prompt }}
+                  </button>
+                </div>
+                <el-input
+                  v-model="question"
+                  type="textarea"
+                  :autosize="{ minRows: 2, maxRows: 5 }"
+                  resize="none"
+                  maxlength="2000"
+                  show-word-limit
+                  :disabled="!activeConversationId || reportBusy || !reportContent"
+                  :placeholder="reportContent ? '针对报告继续提问' : '报告生成完成后可继续提问'"
+                  @keydown.enter.exact.prevent="handleEnter"
+                  @compositionstart="isComposing = true"
+                  @compositionend="handleCompositionEnd"
+                />
+                <el-button
+                  class="send-button"
+                  type="primary"
+                  circle
+                  title="发送问题"
+                  :disabled="!canSendQuestion"
+                  @click="sendQuestion"
+                >
+                  <Icon icon="ep:promotion" />
+                </el-button>
+              </div>
+            </section>
+          </div>
+        </template>
+
+        <StockAiInputContextPanel
+          v-else-if="activeView === 'context'"
+          class="standalone-context-panel"
+          :content="aiInputContext"
+          :analysis="session"
+          :loading="generating || loadingConversation"
+          @copy="copyAiInput"
+          @download="downloadAiInput"
+        />
+
+        <section v-else class="history-panel history-panel--standalone">
+          <div class="history-heading">
+            <div>
+              <h2>{{ analysisScopeLabel }}历史分析</h2>
+              <span>{{ scopeHistory.length }} 个会话，点击后在 AI 深度报告中继续查看</span>
             </div>
           </div>
-        </aside>
-      </div>
-    </main>
+          <div class="history-list" v-loading="loadingHistory">
+            <button
+              v-for="item in scopeHistory"
+              :key="item.conversationId"
+              type="button"
+              class="history-item"
+              :class="{ 'history-item--active': item.conversationId === activeConversationId }"
+              @click="openHistory(item)"
+            >
+              <span class="history-period">{{ getPeriodLabel(item.period) }}</span>
+              <span class="history-title">{{ item.title.replace('[股票AI] ', '') }}</span>
+              <span class="history-time">{{ formatHistoryTime(item.createTime) }}</span>
+              <span
+                class="history-delete"
+                role="button"
+                title="删除会话"
+                @click.stop="deleteHistory(item)"
+              >
+                <Icon icon="ep:delete" />
+              </span>
+            </button>
+            <div v-if="scopeHistory.length === 0 && !loadingHistory" class="history-empty">
+              暂无{{ analysisScopeLabel }}分析
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <aside class="context-rail">
+        <section class="rail-section">
+          <div class="rail-heading">
+            <span>本次分析</span>
+            <el-tag size="small" effect="plain">{{ analysisScopeLabel }}</el-tag>
+          </div>
+          <dl class="analysis-summary-list">
+            <div
+              ><dt>日期范围</dt><dd>{{ selectedDateRangeLabel }}</dd></div
+            >
+            <div
+              ><dt>当前任务</dt><dd>{{ activeViewMeta.label }}</dd></div
+            >
+            <div
+              ><dt>数据来源</dt><dd>{{ activeViewMeta.sourceLabel }}</dd></div
+            >
+            <div
+              ><dt>完整性提示</dt><dd>{{ activeAnalysis?.warnings?.length || 0 }} 项</dd></div
+            >
+          </dl>
+        </section>
+
+        <section class="rail-section rail-section--coverage">
+          <div class="rail-heading"><span>数据覆盖</span></div>
+          <div class="coverage-grid">
+            <div v-for="item in analysisMetrics.slice(0, 4)" :key="item.label">
+              <span>{{ item.label }}</span>
+              <strong :class="{ 'warning-number': item.warning }">{{ item.value }}</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="rail-section">
+          <div class="rail-heading"><span>下一步</span></div>
+          <p class="next-step-copy">{{ activeViewMeta.guidance }}</p>
+          <el-button
+            v-if="activeViewMeta.source === 'system'"
+            class="rail-primary-action"
+            type="primary"
+            plain
+            :disabled="!configStatus?.configured"
+            @click="setActiveView('report')"
+          >
+            <Icon icon="ep:magic-stick" class="mr-5px" />进入 AI 深度报告
+          </el-button>
+          <el-button
+            v-else-if="activeView === 'report'"
+            class="rail-primary-action"
+            plain
+            @click="setActiveView('context')"
+          >
+            <Icon icon="ep:collection" class="mr-5px" />核对输入证据
+          </el-button>
+          <el-button v-else class="rail-primary-action" plain @click="setActiveView('overview')">
+            <Icon icon="ep:data-analysis" class="mr-5px" />返回决策总览
+          </el-button>
+        </section>
+
+        <section class="rail-section rail-section--history">
+          <div class="rail-heading">
+            <span>最近分析</span>
+            <button type="button" @click="setActiveView('history')">查看全部</button>
+          </div>
+          <div class="rail-history-list">
+            <button
+              v-for="item in scopeHistory.slice(0, 4)"
+              :key="item.conversationId"
+              type="button"
+              @click="openHistory(item)"
+            >
+              <span>{{ item.title.replace('[股票AI] ', '') }}</span>
+              <small>{{ formatHistoryTime(item.createTime) }}</small>
+            </button>
+            <span v-if="scopeHistory.length === 0" class="rail-empty">暂无历史分析</span>
+          </div>
+        </section>
+      </aside>
+    </section>
+
     <StockTradePlanDialog ref="tradePlanDialogRef" @saved="handleTradePlanSaved" />
   </div>
 </template>
@@ -433,10 +559,9 @@ const router = useRouter()
 const message = useMessage()
 const { copy } = useClipboard({ legacy: true })
 
-type WorkspaceView = 'system' | 'report'
-type SystemView = 'dashboard' | 'capability' | 'rules'
 type DashboardView = 'overview' | 'episodes' | 'stocks' | 'attribution' | 'discipline'
-type SidePanelView = 'context' | 'history'
+type AnalysisView = DashboardView | 'capability' | 'rules' | 'report' | 'context' | 'history'
+type AnalysisSource = 'system' | 'ai' | 'evidence' | 'history'
 type DatePreset = 'TODAY' | 'WEEK' | 'MONTH' | 'LAST_5' | 'LAST_20' | 'YEAR' | 'CUSTOM'
 type ReportRunStatus =
   | 'idle'
@@ -456,10 +581,7 @@ interface ScopeWorkspaceState {
   period: StockAiAnalysisPeriod
   datePreset: DatePreset
   customDateRange: [string, string]
-  workspaceView: WorkspaceView
-  systemView: SystemView
-  dashboardView: DashboardView
-  sidePanelView: SidePanelView
+  activeView: AnalysisView
   systemAnalysis?: StockSystemAnalysisVO
   session?: StockAiAnalysisSessionVO
   aiInputContext: string
@@ -482,26 +604,196 @@ const runningReportStatuses: ReportRunStatus[] = [
   'generating'
 ]
 const streamingReportStatuses: ReportRunStatus[] = ['connecting', 'waiting', 'generating']
-const workspaceOptions = [
-  { label: '系统数据分析', value: 'system' },
-  { label: 'AI 完整报告', value: 'report' }
+const dashboardViews: AnalysisView[] = [
+  'overview',
+  'episodes',
+  'stocks',
+  'attribution',
+  'discipline'
 ]
-const systemViewOptions = [
-  { label: '本期决策', value: 'dashboard' },
-  { label: '长期能力', value: 'capability' },
-  { label: '个人规则', value: 'rules' }
+const analysisNavigationGroups: Array<{
+  label: string
+  items: Array<{
+    label: string
+    value: AnalysisView
+    icon: string
+    shortDescription: string
+  }>
+}> = [
+  {
+    label: '本期复盘',
+    items: [
+      {
+        label: '决策总览',
+        value: 'overview',
+        icon: 'ep:data-analysis',
+        shortDescription: '先看结果与关键决策'
+      },
+      {
+        label: '交易回合',
+        value: 'episodes',
+        icon: 'ep:connection',
+        shortDescription: '按建仓到退出复盘'
+      },
+      {
+        label: '逐股表现',
+        value: 'stocks',
+        icon: 'ep:trend-charts',
+        shortDescription: '比较个股贡献与表现'
+      },
+      {
+        label: '收益归因',
+        value: 'attribution',
+        icon: 'ep:pie-chart',
+        shortDescription: '拆解市场、行业与选股'
+      },
+      {
+        label: '纪律审计',
+        value: 'discipline',
+        icon: 'ep:checked',
+        shortDescription: '检查计划、风险与数据'
+      }
+    ]
+  },
+  {
+    label: '能力建设',
+    items: [
+      {
+        label: '长期能力',
+        value: 'capability',
+        icon: 'ep:histogram',
+        shortDescription: '观察多周期能力趋势'
+      },
+      { label: '个人规则', value: 'rules', icon: 'ep:list', shortDescription: '沉淀并验证复盘规则' }
+    ]
+  },
+  {
+    label: 'AI 与证据',
+    items: [
+      {
+        label: 'AI 深度报告',
+        value: 'report',
+        icon: 'ep:magic-stick',
+        shortDescription: '生成报告并继续追问'
+      },
+      {
+        label: '输入证据',
+        value: 'context',
+        icon: 'ep:collection',
+        shortDescription: '核对发送给模型的数据'
+      },
+      {
+        label: '历史分析',
+        value: 'history',
+        icon: 'ep:clock',
+        shortDescription: '恢复过去报告与对话'
+      }
+    ]
+  }
 ]
-const dashboardViewOptions = [
-  { label: '决策摘要', value: 'overview' },
-  { label: '交易回合', value: 'episodes' },
-  { label: '逐股表现', value: 'stocks' },
-  { label: '收益归因', value: 'attribution' },
-  { label: '纪律与数据', value: 'discipline' }
-]
-const sidePanelOptions = [
-  { label: 'AI 输入数据', value: 'context' },
-  { label: '最近分析', value: 'history' }
-]
+const analysisViewMeta: Record<
+  AnalysisView,
+  {
+    label: string
+    icon: string
+    source: AnalysisSource
+    sourceIcon: string
+    sourceLabel: string
+    description: string
+    guidance: string
+  }
+> = {
+  overview: {
+    label: '决策总览',
+    icon: 'ep:data-analysis',
+    source: 'system',
+    sourceIcon: 'ep:cpu',
+    sourceLabel: '系统确定性结果',
+    description: '用规则与公式先确认本期收益、风险、关键决策和数据覆盖。',
+    guidance: '先定位影响最大的正负决策，再进入交易回合核对过程证据。'
+  },
+  episodes: {
+    label: '交易回合',
+    icon: 'ep:connection',
+    source: 'system',
+    sourceIcon: 'ep:cpu',
+    sourceLabel: '系统确定性结果',
+    description: '按一轮建仓、持有和退出重组流水，检查每个回合的真实结果。',
+    guidance: '优先查看亏损、数据不完整或明显跑输基准的交易回合。'
+  },
+  stocks: {
+    label: '逐股表现',
+    icon: 'ep:trend-charts',
+    source: 'system',
+    sourceIcon: 'ep:cpu',
+    sourceLabel: '系统确定性结果',
+    description: '横向比较各股票的收益贡献、持有表现和相对基准结果。',
+    guidance: '识别主要盈利来源和拖累项，再结合收益归因判断是否属于选股能力。'
+  },
+  attribution: {
+    label: '收益归因',
+    icon: 'ep:pie-chart',
+    source: 'system',
+    sourceIcon: 'ep:cpu',
+    sourceLabel: '系统确定性结果',
+    description: '拆分市场、行业、个股、择时、仓位与费用对结果的影响。',
+    guidance: '先判断收益来自市场环境还是独立决策，再决定哪些经验值得复用。'
+  },
+  discipline: {
+    label: '纪律审计',
+    icon: 'ep:checked',
+    source: 'system',
+    sourceIcon: 'ep:cpu',
+    sourceLabel: '系统确定性结果',
+    description: '核对交易计划、纪律执行、风险项和数据完整性。',
+    guidance: '把明确违反计划的行为转为下一周期可检查的个人规则。'
+  },
+  capability: {
+    label: '长期能力',
+    icon: 'ep:histogram',
+    source: 'system',
+    sourceIcon: 'ep:cpu',
+    sourceLabel: '系统历史统计',
+    description: '跨周期观察选股、买入、卖出、仓位和纪律能力是否改善。',
+    guidance: '不要只看单次分数，结合样本数、数据完整度和历史证据判断趋势。'
+  },
+  rules: {
+    label: '个人规则',
+    icon: 'ep:list',
+    source: 'system',
+    sourceIcon: 'ep:user',
+    sourceLabel: '用户确认规则',
+    description: '将复盘结论沉淀为下一周期可执行、可验证的个人交易规则。',
+    guidance: '从少量高频错误开始，每条规则都要有明确指标、阈值和适用范围。'
+  },
+  report: {
+    label: 'AI 深度报告',
+    icon: 'ep:magic-stick',
+    source: 'ai',
+    sourceIcon: 'ep:magic-stick',
+    sourceLabel: 'AI 模型推断',
+    description: '基于系统事实数据生成结构化复盘，并支持围绕报告继续追问。',
+    guidance: '先确认报告状态和输入数据，再把 AI 观点与系统确定性结果交叉核对。'
+  },
+  context: {
+    label: '输入证据',
+    icon: 'ep:collection',
+    source: 'evidence',
+    sourceIcon: 'ep:document',
+    sourceLabel: '当次模型输入',
+    description: '完整查看发送给 AI 的持仓、交易、行情与规则上下文。',
+    guidance: '若报告结论异常，先检查日期、样本覆盖、行情缺失和具体输入事实。'
+  },
+  history: {
+    label: '历史分析',
+    icon: 'ep:clock',
+    source: 'history',
+    sourceIcon: 'ep:clock',
+    sourceLabel: '历史会话快照',
+    description: '按当前分析对象恢复过去生成的报告、输入数据和追问记录。',
+    guidance: '选择历史会话后会进入 AI 深度报告，可继续追问、复制或下载。'
+  }
+}
 const analysisScopeOptions = [
   { label: '综合复盘', value: 'COMPREHENSIVE' },
   { label: '当前持仓', value: 'POSITION' },
@@ -565,10 +857,7 @@ const createScopeWorkspace = (): ScopeWorkspaceState => ({
   period: 'WEEKLY',
   datePreset: 'WEEK',
   customDateRange: [...defaultCustomRange],
-  workspaceView: 'system',
-  systemView: 'dashboard',
-  dashboardView: 'overview',
-  sidePanelView: 'history',
+  activeView: 'overview',
   aiInputContext: '',
   messages: [],
   activeTitle: '',
@@ -597,21 +886,9 @@ const customDateRange = computed({
   get: () => currentScopeWorkspace.value.customDateRange,
   set: (value: [string, string]) => (currentScopeWorkspace.value.customDateRange = value)
 })
-const workspaceView = computed({
-  get: () => currentScopeWorkspace.value.workspaceView,
-  set: (value: WorkspaceView) => (currentScopeWorkspace.value.workspaceView = value)
-})
-const systemView = computed({
-  get: () => currentScopeWorkspace.value.systemView,
-  set: (value: SystemView) => (currentScopeWorkspace.value.systemView = value)
-})
-const dashboardView = computed({
-  get: () => currentScopeWorkspace.value.dashboardView,
-  set: (value: DashboardView) => (currentScopeWorkspace.value.dashboardView = value)
-})
-const sidePanelView = computed({
-  get: () => currentScopeWorkspace.value.sidePanelView,
-  set: (value: SidePanelView) => (currentScopeWorkspace.value.sidePanelView = value)
+const activeView = computed({
+  get: () => currentScopeWorkspace.value.activeView,
+  set: (value: AnalysisView) => (currentScopeWorkspace.value.activeView = value)
 })
 const systemAnalysis = computed({
   get: () => currentScopeWorkspace.value.systemAnalysis,
@@ -674,10 +951,13 @@ const loadingHistory = ref(false)
 const loadingConversation = ref(false)
 const abortController = ref<AbortController>()
 const messageViewport = ref<HTMLElement>()
+const reportPanelRef = ref<HTMLElement>()
 const tradePlanDialogRef = ref<InstanceType<typeof StockTradePlanDialog>>()
 const isComposing = ref(false)
+const reportFullscreen = ref(false)
 const statusClock = ref(Date.now())
 let statusTimer: number | undefined
+let originalBodyOverflow = ''
 
 const resolvePresetRange = (preset: DatePreset): [string, string] => {
   const end = new Date()
@@ -731,11 +1011,14 @@ const generating = computed(() => reportStatus.value === 'preparing')
 const streaming = computed(() => streamingReportStatuses.includes(reportStatus.value))
 const reportBusy = computed(() => runningReportStatuses.includes(reportStatus.value))
 const busy = computed(() => calculating.value || reportBusy.value || loadingConversation.value)
-const activeAnalysis = computed(() =>
-  workspaceView.value === 'system' ? systemAnalysis.value : session.value
+const activeViewMeta = computed(() => analysisViewMeta[activeView.value])
+const activeDashboardView = computed<DashboardView | undefined>(() =>
+  dashboardViews.includes(activeView.value) ? (activeView.value as DashboardView) : undefined
 )
-const workspaceSourceText = computed(() =>
-  workspaceView.value === 'system' ? '来源：系统规则与公式计算' : '来源：AI 模型生成'
+const activeAnalysis = computed(() =>
+  ['report', 'context', 'history'].includes(activeView.value)
+    ? session.value || systemAnalysis.value
+    : systemAnalysis.value || session.value
 )
 const modelStatusText = computed(() => {
   if (!configStatus.value) return '正在检查 AI 报告模型配置'
@@ -743,7 +1026,7 @@ const modelStatusText = computed(() => {
   return `AI 报告 · ${configStatus.value.platform || 'AI'} · ${configStatus.value.modelName || configStatus.value.model}`
 })
 const analysisDateRange = computed(() => {
-  if (!activeAnalysis.value) return '--'
+  if (!activeAnalysis.value) return selectedDateRangeLabel.value
   return activeAnalysis.value.beginDate === activeAnalysis.value.endDate
     ? activeAnalysis.value.endDate
     : `${activeAnalysis.value.beginDate} 至 ${activeAnalysis.value.endDate}`
@@ -919,6 +1202,10 @@ const applyDatePreset = (preset: DatePreset) => {
   else period.value = 'CUSTOM'
 }
 
+const setActiveView = (view: AnalysisView) => {
+  activeView.value = view
+}
+
 const formatElapsed = (seconds: number) => {
   if (seconds < 60) return `${seconds} 秒`
   const minutes = Math.floor(seconds / 60)
@@ -1003,8 +1290,7 @@ const runSystemAnalysis = async () => {
   calculating.value = true
   try {
     systemAnalysis.value = await StockAiAnalysisApi.analyzeDashboard(buildAnalysisRequest())
-    workspaceView.value = 'system'
-    dashboardView.value = 'overview'
+    activeView.value = 'overview'
     message.success(`${analysisScopeLabel.value}系统分析已更新`)
   } finally {
     calculating.value = false
@@ -1036,7 +1322,7 @@ const generateAiReport = async () => {
     return
   }
   if (!validateDateRange()) return
-  workspaceView.value = 'report'
+  activeView.value = 'report'
   streamPurpose.value = 'report'
   resetReportRun()
   updateReportStatus('preparing')
@@ -1045,7 +1331,6 @@ const generateAiReport = async () => {
     const created = await StockAiAnalysisApi.createSession(buildAnalysisRequest())
     session.value = created
     aiInputContext.value = created.initialPrompt
-    sidePanelView.value = 'context'
     messages.value = []
     activeConversationId.value = created.conversationId
     activeTitle.value = created.title.replace('[股票AI] ', '')
@@ -1200,7 +1485,7 @@ const handleCompositionEnd = () => {
 
 const openHistory = async (item: StockAiAnalysisHistoryVO) => {
   if (item.conversationId === activeConversationId.value) {
-    workspaceView.value = 'report'
+    activeView.value = 'report'
     return
   }
   abortCurrentStream(false)
@@ -1235,7 +1520,6 @@ const openHistory = async (item: StockAiAnalysisHistoryVO) => {
     if (snapshot.beginDate && snapshot.endDate) {
       customDateRange.value = [snapshot.beginDate, snapshot.endDate]
     }
-    sidePanelView.value = 'context'
     let initialUserFound = false
     messages.value = chatMessages.map((chatMessage) => {
       if (chatMessage.type === 'user' && !initialUserFound) {
@@ -1247,7 +1531,7 @@ const openHistory = async (item: StockAiAnalysisHistoryVO) => {
       }
       return chatMessage
     })
-    workspaceView.value = 'report'
+    activeView.value = 'report'
     const hasAssistantContent = messages.value.some(
       (chatMessage) => chatMessage.type === 'assistant' && chatMessage.content
     )
@@ -1324,6 +1608,24 @@ const downloadAiInput = () => {
   )
 }
 
+const setReportFullscreen = (fullscreen: boolean) => {
+  if (reportFullscreen.value === fullscreen) return
+  reportFullscreen.value = fullscreen
+  if (fullscreen) {
+    originalBodyOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    nextTick(() => reportPanelRef.value?.focus())
+    return
+  }
+  document.body.style.overflow = originalBodyOverflow
+}
+
+const toggleReportFullscreen = () => setReportFullscreen(!reportFullscreen.value)
+
+const handleFullscreenKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape' && reportFullscreen.value) setReportFullscreen(false)
+}
+
 const goToConfig = (path: string) => router.push(path)
 
 const scrollToBottom = async () => {
@@ -1336,6 +1638,7 @@ const formatMessageTime = (value: Date | string) =>
 const formatHistoryTime = (value: string) => (value ? formatDate(value, 'MM-DD HH:mm') : '')
 
 onMounted(async () => {
+  window.addEventListener('keydown', handleFullscreenKeydown)
   statusTimer = window.setInterval(() => {
     statusClock.value = Date.now()
   }, 1000)
@@ -1344,6 +1647,8 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   abortCurrentStream(false)
+  window.removeEventListener('keydown', handleFullscreenKeydown)
+  setReportFullscreen(false)
   if (statusTimer) window.clearInterval(statusTimer)
 })
 </script>
@@ -1375,7 +1680,9 @@ onBeforeUnmount(() => {
 .assistant-meta,
 .data-warning-line,
 .configuration-warning,
-.workspace-switch,
+.canvas-title-line,
+.canvas-identity,
+.rail-heading,
 .source-label {
   display: flex;
   align-items: center;
@@ -1519,15 +1826,181 @@ h2 {
   border-left: 1px solid var(--el-color-warning-light-7);
 }
 
-.workspace-switch {
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 52px;
-  padding: 8px 14px;
+.research-workspace {
+  display: grid;
+  grid-template-columns: 224px minmax(620px, 1fr) 260px;
+  align-items: start;
+  min-height: 720px;
+  margin-top: 12px;
+  overflow: hidden;
   background: var(--el-bg-color);
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 6px;
+}
+
+.analysis-nav-panel {
+  position: sticky;
+  top: 12px;
+  max-height: calc(100vh - 120px);
+  min-width: 0;
+  overflow-y: auto;
   border-right: 1px solid var(--el-border-color-light);
-  border-bottom: 1px solid var(--el-border-color-light);
-  border-left: 1px solid var(--el-border-color-light);
+}
+
+.analysis-nav-heading {
+  display: flex;
+  min-height: 62px;
+  flex-direction: column;
+  justify-content: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.analysis-nav-heading span,
+.nav-group-label,
+.rail-heading > span {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--el-text-color-secondary);
+}
+
+.analysis-nav-heading small {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--el-text-color-placeholder);
+}
+
+.analysis-nav-groups {
+  padding: 8px;
+}
+
+.nav-group + .nav-group {
+  padding-top: 8px;
+  margin-top: 8px;
+  border-top: 1px solid var(--el-border-color-extra-light);
+}
+
+.nav-group-label {
+  display: block;
+  padding: 5px 8px;
+  font-size: 11px;
+  color: var(--el-text-color-placeholder);
+}
+
+.analysis-nav-item {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 14px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 7px 8px;
+  margin: 2px 0;
+  font: inherit;
+  color: var(--el-text-color-regular);
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+}
+
+.analysis-nav-item > :first-child {
+  font-size: 17px;
+  color: var(--el-text-color-secondary);
+}
+
+.analysis-nav-item span {
+  min-width: 0;
+}
+
+.analysis-nav-item strong,
+.analysis-nav-item small {
+  display: block;
+}
+
+.analysis-nav-item strong {
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.analysis-nav-item small {
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 15px;
+  color: var(--el-text-color-placeholder);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analysis-nav-item:hover {
+  background: var(--el-fill-color-light);
+}
+
+.analysis-nav-item--active {
+  color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+  border-color: var(--el-color-primary-light-7);
+  box-shadow: inset 3px 0 0 var(--el-color-primary);
+}
+
+.analysis-nav-item--active > :first-child,
+.analysis-nav-item--active .nav-arrow {
+  color: var(--el-color-primary);
+}
+
+.nav-arrow {
+  font-size: 12px;
+  color: var(--el-text-color-placeholder);
+}
+
+.analysis-canvas {
+  min-width: 0;
+  overflow-x: auto;
+  border-right: 1px solid var(--el-border-color-light);
+}
+
+.canvas-heading {
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.canvas-identity {
+  min-width: 0;
+  gap: 11px;
+}
+
+.canvas-icon {
+  display: grid;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  font-size: 18px;
+  color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+  border: 1px solid var(--el-color-primary-light-7);
+  border-radius: 5px;
+  place-items: center;
+}
+
+.canvas-title-line {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.canvas-heading p {
+  margin: 2px 0 0;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 18px;
+  color: var(--el-text-color-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .source-label {
@@ -1537,16 +2010,23 @@ h2 {
   color: var(--el-text-color-secondary);
 }
 
-.source-label--report {
+.source-label--ai {
   color: var(--el-color-primary);
+}
+
+.source-label--evidence {
+  color: var(--el-color-success);
+}
+
+.source-label--history {
+  color: var(--el-color-warning-dark-2);
 }
 
 .metric-strip {
   display: grid;
   grid-template-columns: minmax(220px, 1.7fr) repeat(5, minmax(100px, 1fr));
   background: var(--el-bg-color);
-  border: 1px solid var(--el-border-color-light);
-  border-top: 0;
+  border-bottom: 1px solid var(--el-border-color-light);
 }
 
 .metric-item {
@@ -1593,42 +2073,26 @@ h2 {
   border-left: 1px solid var(--el-border-color-light);
 }
 
-.analysis-view-switch {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 52px;
-  padding: 8px 14px;
-  background: var(--el-bg-color);
-  border-right: 1px solid var(--el-border-color-light);
-  border-bottom: 1px solid var(--el-border-color-light);
-  border-left: 1px solid var(--el-border-color-light);
-}
-
-.analysis-view-switch > span {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-
-.dashboard-view-switch {
-  display: flex;
-  justify-content: flex-start;
-  min-height: 50px;
-  padding: 8px 14px;
-  background: var(--el-bg-color);
-  border-right: 1px solid var(--el-border-color-light);
-  border-bottom: 1px solid var(--el-border-color-light);
-  border-left: 1px solid var(--el-border-color-light);
-}
-
 .warning-tooltip {
   max-width: 520px;
   line-height: 22px;
 }
 
-.report-workspace {
-  margin-top: 12px;
+.report-reader {
+  min-width: 0;
+  background: var(--el-bg-color);
+}
+
+.report-reader--fullscreen {
+  position: fixed;
+  z-index: 3000;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--el-bg-color);
 }
 
 .report-control {
@@ -1641,8 +2105,7 @@ h2 {
   padding: 14px 16px;
   overflow: hidden;
   background: var(--el-bg-color);
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 6px;
+  border-bottom: 1px solid var(--el-border-color-light);
 }
 
 .report-control--active {
@@ -1791,22 +2254,49 @@ h2 {
   }
 }
 
-.analysis-workspace {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 38%);
-  min-height: 650px;
-  margin-top: 8px;
-  overflow: hidden;
-  background: var(--el-bg-color);
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 6px;
-}
-
 .conversation-panel {
   display: grid;
   grid-template-rows: 56px minmax(480px, 1fr) auto;
   min-width: 0;
   min-height: 650px;
+}
+
+.report-reader--fullscreen .report-control {
+  min-height: 82px;
+  border-right: 0;
+  border-left: 0;
+}
+
+.report-reader--fullscreen .conversation-panel {
+  grid-template-rows: 60px minmax(0, 1fr) auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.report-reader--fullscreen .message-viewport {
+  width: min(1080px, 100%);
+  height: auto;
+  max-height: none;
+  min-height: 0;
+  padding-right: 40px;
+  padding-left: 40px;
+  margin: 0 auto;
+}
+
+.report-reader--fullscreen .conversation-heading,
+.report-reader--fullscreen .question-composer {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+.report-reader--fullscreen .conversation-heading {
+  border-right: 1px solid var(--el-border-color-lighter);
+  border-left: 1px solid var(--el-border-color-lighter);
+}
+
+.report-reader--fullscreen .question-composer {
+  border-right: 1px solid var(--el-border-color-lighter);
+  border-left: 1px solid var(--el-border-color-lighter);
 }
 
 .conversation-heading,
@@ -1826,12 +2316,16 @@ h2 {
   display: flex;
 }
 
+.report-actions :deep(.el-button) {
+  min-width: 32px;
+}
+
 .report-actions :deep(.el-button + .el-button) {
   margin-left: 2px;
 }
 
 .message-viewport {
-  height: calc(100vh - 390px);
+  height: calc(100vh - 430px);
   max-height: 820px;
   min-height: 480px;
   padding: 6px 24px 28px;
@@ -2045,26 +2539,12 @@ h2 {
   height: 32px;
 }
 
-.report-side-panel {
-  display: grid;
-  grid-template-rows: 48px minmax(0, 1fr);
-  min-width: 0;
-  border-left: 1px solid var(--el-border-color-light);
-}
-
-.side-panel-switch {
-  display: flex;
-  align-items: center;
-  padding: 7px 10px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-
-.side-panel-switch :deep(.el-segmented) {
-  width: 100%;
-}
-
 .history-panel {
   min-width: 0;
+}
+
+.history-panel--standalone {
+  min-height: 640px;
 }
 
 .history-heading {
@@ -2072,7 +2552,7 @@ h2 {
 }
 
 .history-list {
-  height: calc(100vh - 310px);
+  height: calc(100vh - 330px);
   max-height: 890px;
   min-height: 590px;
   padding: 8px;
@@ -2154,6 +2634,192 @@ h2 {
   text-align: center;
 }
 
+.standalone-context-panel {
+  min-height: 640px;
+}
+
+.context-rail {
+  position: sticky;
+  top: 12px;
+  max-height: calc(100vh - 120px);
+  min-width: 0;
+  overflow-y: auto;
+  background: var(--el-fill-color-extra-light);
+}
+
+.rail-section {
+  padding: 14px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.rail-heading {
+  min-height: 24px;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.rail-heading button {
+  padding: 0;
+  font: inherit;
+  font-size: 11px;
+  color: var(--el-color-primary);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+.analysis-summary-list {
+  margin: 0;
+}
+
+.analysis-summary-list > div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--el-border-color-extra-light);
+}
+
+.analysis-summary-list > div:last-child {
+  border-bottom: 0;
+}
+
+.analysis-summary-list dt,
+.analysis-summary-list dd {
+  min-width: 0;
+  margin: 0;
+  font-size: 11px;
+  line-height: 18px;
+}
+
+.analysis-summary-list dt {
+  color: var(--el-text-color-placeholder);
+}
+
+.analysis-summary-list dd {
+  color: var(--el-text-color-regular);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.coverage-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid var(--el-border-color-lighter);
+}
+
+.coverage-grid > div {
+  display: flex;
+  min-height: 62px;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px;
+  border-right: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.coverage-grid > div:nth-child(2n) {
+  border-right: 0;
+}
+
+.coverage-grid > div:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.coverage-grid span {
+  font-size: 10px;
+  color: var(--el-text-color-placeholder);
+}
+
+.coverage-grid strong {
+  margin-top: 3px;
+  font-size: 16px;
+}
+
+.warning-number {
+  color: var(--el-color-warning-dark-2);
+}
+
+.next-step-copy {
+  margin: 0 0 12px;
+  font-size: 11px;
+  line-height: 19px;
+  color: var(--el-text-color-secondary);
+}
+
+.rail-primary-action {
+  width: 100%;
+}
+
+.rail-history-list {
+  display: grid;
+  gap: 4px;
+}
+
+.rail-history-list button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 7px;
+  font: inherit;
+  color: var(--el-text-color-regular);
+  text-align: left;
+  cursor: pointer;
+  background: var(--el-bg-color);
+  border: 1px solid var(--el-border-color-extra-light);
+  border-radius: 4px;
+}
+
+.rail-history-list button:hover {
+  border-color: var(--el-color-primary-light-7);
+}
+
+.rail-history-list span {
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rail-history-list small,
+.rail-empty {
+  font-size: 10px;
+  color: var(--el-text-color-placeholder);
+}
+
+.rail-empty {
+  padding: 10px 0;
+  text-align: center;
+}
+
+@media (width <= 1400px) {
+  .research-workspace {
+    grid-template-columns: 208px minmax(0, 1fr);
+  }
+
+  .context-rail {
+    position: static;
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    max-height: none;
+    border-top: 1px solid var(--el-border-color-light);
+  }
+
+  .rail-section {
+    border-right: 1px solid var(--el-border-color-lighter);
+    border-bottom: 0;
+  }
+
+  .rail-section:last-child {
+    border-right: 0;
+  }
+}
+
 @media (width <= 1100px) {
   .command-bar {
     align-items: flex-start;
@@ -2182,6 +2848,10 @@ h2 {
 
   .metric-item:nth-child(n + 4) {
     border-top: 1px solid var(--el-border-color-lighter);
+  }
+
+  .research-workspace {
+    grid-template-columns: 196px minmax(0, 1fr);
   }
 }
 
@@ -2224,8 +2894,80 @@ h2 {
     margin-left: 0;
   }
 
-  .analysis-workspace {
+  .research-workspace {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .analysis-nav-panel {
+    position: static;
+    max-height: none;
+    overflow: hidden;
+    border-right: 0;
+    border-bottom: 1px solid var(--el-border-color-light);
+  }
+
+  .analysis-nav-heading {
+    min-height: 52px;
+  }
+
+  .analysis-nav-groups {
+    display: flex;
+    gap: 8px;
+    padding: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .analysis-nav-groups::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-group,
+  .nav-group + .nav-group {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 4px;
+    padding-top: 0;
+    margin-top: 0;
+    border-top: 0;
+  }
+
+  .nav-group-label {
+    display: none;
+  }
+
+  .analysis-nav-item {
+    grid-template-columns: 18px auto;
+    width: auto;
+    min-width: 112px;
+    min-height: 42px;
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .analysis-nav-item small,
+  .nav-arrow {
+    display: none;
+  }
+
+  .analysis-nav-item--active {
+    box-shadow: inset 0 -3px 0 var(--el-color-primary);
+  }
+
+  .analysis-canvas {
+    border-right: 0;
+  }
+
+  .context-rail {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rail-section:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .rail-section:nth-child(n + 3) {
+    border-top: 1px solid var(--el-border-color-lighter);
   }
 
   .report-control {
@@ -2235,26 +2977,6 @@ h2 {
 
   .report-control__actions {
     width: 100%;
-  }
-
-  .analysis-view-switch {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .workspace-switch {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .workspace-switch :deep(.el-segmented),
-  .analysis-view-switch :deep(.el-segmented) {
-    width: 100%;
-  }
-
-  .report-side-panel {
-    border-top: 1px solid var(--el-border-color-light);
-    border-left: 0;
   }
 
   .history-list {
@@ -2274,11 +2996,6 @@ h2 {
 @media (width <= 560px) {
   .command-actions :deep(.el-segmented) {
     width: 100%;
-  }
-
-  .workspace-switch :deep(.el-segmented__item-label),
-  .analysis-view-switch :deep(.el-segmented__item-label) {
-    font-size: 11px;
   }
 
   .custom-range-picker {
@@ -2313,6 +3030,21 @@ h2 {
     width: 100%;
   }
 
+  .report-reader--fullscreen .report-control {
+    min-height: 112px;
+  }
+
+  .report-reader--fullscreen .message-viewport {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .report-reader--fullscreen .conversation-heading,
+  .report-reader--fullscreen .question-composer {
+    border-right: 0;
+    border-left: 0;
+  }
+
   .metric-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2327,6 +3059,36 @@ h2 {
 
   .metric-item--period {
     grid-column: span 2;
+  }
+
+  .canvas-heading {
+    align-items: flex-start;
+  }
+
+  .canvas-title-line {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .canvas-heading p {
+    display: -webkit-box;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .context-rail {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rail-section,
+  .rail-section:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .rail-section:nth-child(n + 2) {
+    border-top: 1px solid var(--el-border-color-lighter);
   }
 
   .user-message {
