@@ -1,0 +1,21 @@
+import"./rolldown-runtime-DAXXjFlN.js";import{$a as e,Eo as t,Ja as n,Jo as r,Pa as i,Ra as a,X as o,ga as s,ho as c,it as l,ja as u,la as d,ma as f,n as p,oo as m,pa as h,qa as g,sa as _,ta as v,ua as y,xa as b,za as x}from"./form-create-BgxR3zFI.js";import{t as S}from"./useI18n-BmWp9RX5.js";import{t as C}from"./_plugin-vue_export-helper-BDNMzG2s.js";import{d as w}from"./is-BCSfzVfJ.js";import{t as T}from"./useMessage-C7Txbg1o.js";import{$ as E,f as D}from"./index-D7A3wAee.js";import{t as O}from"./Dialog-BD7ZCmpS.js";import{t as k}from"./ContentWrap-djSfXYRL.js";import{t as A}from"./es-HAhH5Z55.js";/* empty css               */import{t as j}from"./java-B_6ftu-B.js";import{t as M}from"./json-BFC5e-Ei.js";b(),e();var N=s({name:`InfraBuild`,__name:`index`,setup(e,{expose:t}){t();let{t:n}=S(),r=T(),i=m({switchType:[],autoActive:!0,useTemplate:!1,formOptions:{form:{labelWidth:`100px`}},fieldReadonly:!1,hiddenDragMenu:!1,hiddenDragBtn:!1,hiddenMenu:[],hiddenItem:[],hiddenItemConfig:{},disabledItemConfig:{},showSaveBtn:!1,showConfig:!0,showBaseForm:!0,showControl:!0,showPropsForm:!0,showEventForm:!0,showValidateForm:!0,showFormConfig:!0,showInputData:!0,showDevice:!0,appendConfigData:[]}),a=m(),o=m(!1),s=m(``),l=m(-1),d=m(``);E(a);let f=e=>{o.value=!0,s.value=e},h=()=>{f(`生成 JSON`),l.value=0,d.value=a.value.getRule()},g=()=>{f(`生成 Options`),l.value=1,d.value=a.value.getOption()},_=()=>{f(`生成组件`),l.value=2,d.value=v()},v=()=>{let e=a.value.getRule(),t=a.value.getOption();return`<template>
+    <form-create
+      v-model:api="fApi"
+      :rule="rule"
+      :option="option"
+      @submit="onSubmit"
+    ></form-create>
+  </template>
+  <script setup lang=ts>
+    const faps = ref(null)
+    const rule = ref('')
+    const option = ref('')
+    const init = () => {
+      rule.value = formCreate.parseJson('${p.toJson(e).replaceAll(`\\`,`\\\\`)}')
+      option.value = formCreate.parseJson('${JSON.stringify(t)}')
+    }
+    const onSubmit = (formData) => {
+      //todo 提交表单
+    }
+    init()
+  <\/script>`},y=async e=>{let{copy:t,copied:i,isSupported:a}=D({legacy:!0,source:JSON.stringify(e,null,2)});a?(await t(),c(i)&&r.success(n(`common.copySuccess`))):r.error(n(`common.copyError`))},b=e=>{let t=`json`;return l.value===2&&(t=`xml`),w(e)||(e=JSON.stringify(e,null,2)),A.highlight(e,{language:t,ignoreIllegals:!0}).value||`&nbsp;`};u(async()=>{A.registerLanguage(`xml`,j),A.registerLanguage(`json`,M)});let x={t:n,message:r,designerConfig:i,designer:a,dialogVisible:o,dialogTitle:s,formType:l,formData:d,openModel:f,showJson:h,showOption:g,showTemplate:_,makeTemplate:v,copy:y,highlightedCode:b};return Object.defineProperty(x,"__isScriptSetup",{enumerable:!1,value:!0}),x}});b(),t();var P={class:`h-[calc(100vh-var(--top-tool-height)-var(--tags-view-height)-var(--app-content-padding)-var(--app-content-padding)-2px)]`},F={key:0,ref:`editor`},I={class:`hljs`};function L(e,t,s,c,u,p){let m=o,b=a(`fc-designer`),S=k,C=l,w=O,T=x(`dompurify-html`);return i(),y(v,null,[f(S,{"body-style":{padding:`0px`},class:`!mb-0`},{default:g(()=>[_(`div`,P,[f(b,{class:`my-designer`,ref:`designer`,config:c.designerConfig},{handle:g(()=>[f(m,{size:`small`,type:`primary`,plain:``,onClick:c.showJson},{default:g(()=>[...t[2]||=[h(`生成JSON`,-1)]]),_:1}),f(m,{size:`small`,type:`success`,plain:``,onClick:c.showOption},{default:g(()=>[...t[3]||=[h(`生成Options`,-1)]]),_:1}),f(m,{size:`small`,type:`danger`,plain:``,onClick:c.showTemplate},{default:g(()=>[...t[4]||=[h(`生成组件`,-1)]]),_:1})]),_:1},8,[`config`])])]),_:1}),f(w,{modelValue:c.dialogVisible,"onUpdate:modelValue":t[1]||=e=>c.dialogVisible=e,title:c.dialogTitle,"max-height":`600`},{default:g(()=>[c.dialogVisible?(i(),y(`div`,F,[f(m,{style:{float:`right`},onClick:t[0]||=e=>c.copy(c.formData)},{default:g(()=>[h(r(c.t(`common.copy`)),1)]),_:1}),f(C,{height:`580`},{default:g(()=>[_(`div`,null,[_(`pre`,null,[n(_(`code`,I,null,512),[[T,c.highlightedCode(c.formData)]])])])]),_:1})],512)):d(``,!0)]),_:1},8,[`modelValue`,`title`])],64)}var R=C(N,[[`render`,L],[`__file`,`D:/MyWorkProject/807073836/ak-yudao-ui-admin-vue3/src/views/infra/build/index.vue`]]);export{R as default};

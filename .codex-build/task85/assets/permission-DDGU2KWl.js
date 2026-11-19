@@ -1,0 +1,1 @@
+import{t as e}from"./useI18n-BmWp9RX5.js";import"./useCache-C25PGFK7.js";import{b as t}from"./index-60z1DMam.js";var{t:n}=e();function r(e){return t(e)}export{r as t};

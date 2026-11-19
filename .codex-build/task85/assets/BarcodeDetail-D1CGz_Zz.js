@@ -1,0 +1,29 @@
+import{r as e}from"./rolldown-runtime-DAXXjFlN.js";import{$a as t,Eo as n,Jo as r,Pa as i,X as a,ca as o,ga as s,la as c,ma as l,oo as u,pa as d,qa as f,sa as p,ua as m,ut as h,xa as g}from"./form-create-BgxR3zFI.js";import{t as _}from"./Icon-DD2dZj90.js";import{n as v,t as y}from"./css-wq1QvJm_.js";import{t as b}from"./_plugin-vue_export-helper-BDNMzG2s.js";import{f as x}from"./utils-CofKKlpQ.js";import{t as S}from"./useMessage-C7Txbg1o.js";import{Ut as C,z as w}from"./index-60z1DMam.js";import{t as T}from"./Dialog-BD7ZCmpS.js";import{c as E}from"./formatTime-8lZMAA9v.js";import{t as D}from"./DictTag-B8ic_a3Z.js";import{t as O}from"./download-BoyulgRb.js";import{t as k}from"./Barcode-C_elWxwX.js";import{t as A}from"./barcode-CWwRAjqi.js";g(),t();var j=s({name:`BarcodeDetail`,__name:`BarcodeDetail`,setup(e,{expose:t}){let n=S(),r=u(!1),i=u(),a=u({}),o=e=>{r.value=!0,a.value={...e}},s=async(e,t,i,o)=>{r.value=!0;try{let r=await A.getBarcodeByBusiness(t,e);r?a.value={...r}:(a.value={bizType:t,bizId:e,bizCode:i,bizName:o,content:``},n.warning(`未找到对应条码数据`))}catch{a.value={bizType:t,bizId:e,bizCode:i,bizName:o,content:``},n.error(`加载条码数据失败`)}};t({open:o,openByBusiness:s});let c={message:n,dialogVisible:r,barcodeRef:i,barcodeData:a,open:o,openByBusiness:s,handlePrint:()=>{if(!i.value){n.warning(`条码组件未加载`);return}let e=i.value.getImageBase64?.();if(!e){n.warning(`条码生成失败，无法打印`);return}let t=window.open(``,`_blank`);if(!t){n.error(`无法打开打印窗口，请检查浏览器设置`);return}try{let n=`<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>打印条码</title>
+    <style>
+      * { margin: 0; padding: 0; }
+      body { font-family: Arial, sans-serif; padding: 20px; }
+      .print-container { text-align: center; }
+      .barcode-img { max-width: 100%; margin: 20px 0; }
+      .info { margin-top: 20px; text-align: left; font-size: 12px; }
+      .info p { margin: 5px 0; }
+      @media print {
+        body { padding: 0; }
+        .print-container { padding: 20px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="print-container">
+      <img src="${e}" class="barcode-img" alt="条码" />
+      <div class="info">
+        <p><strong>业务编码:</strong> ${x(a.value.bizCode||``)}</p>
+        <p><strong>业务名称:</strong> ${x(a.value.bizName||``)}</p>
+        <p><strong>条码内容:</strong> ${x(a.value.content||``)}</p>
+      </div>
+    </div>
+  </body>
+</html>`;t.document.write(n),t.document.close(),t.onload=()=>{setTimeout(()=>{t.print()},500)}}catch(e){console.error(`打印失败:`,e),n.error(`打印失败，请重试`)}},handleDownload:()=>{if(!i.value){n.warning(`条码组件未加载`);return}let e=i.value.getImageBase64?.();if(!e){n.warning(`条码生成失败，无法下载`);return}try{O.base64Image(e,`barcode_${a.value.bizCode||`unknown`}_${Date.now()}`),n.success(`下载成功`)}catch(e){console.error(`下载失败:`,e),n.error(`下载失败，请重试`)}},handleGenerate:async()=>{let{bizType:e,bizId:t,bizCode:r,bizName:i}=a.value;if(!e||!t){n.warning(`缺少业务类型或业务编号，无法生成条码`);return}try{await A.createBarcode({bizType:e,bizId:t,bizCode:r||``,bizName:i||``}),n.success(`条码生成成功`);let o=await A.getBarcodeByBusiness(e,t);o&&(a.value={...o})}catch(e){n.error(e?.message||`条码生成失败，请重试`)}},get DICT_TYPE(){return w},get formatDate(){return E},Barcode:k};return Object.defineProperty(c,"__isScriptSetup",{enumerable:!1,value:!0}),c}}),M=e({default:()=>L});g(),n();var N={class:`flex justify-center items-center min-h-200px p-20px bg-[#f5f7fa] rounded mb-20px`},P={key:0,class:`flex justify-center items-center`},F={class:`inline-block max-w-300px overflow-hidden text-ellipsis whitespace-nowrap break-all`};function I(e,t,n,s,u,g){let b=C,x=D,S=v,w=h,E=y,O=_,k=a,A=T;return i(),o(A,{title:`查看条码`,modelValue:s.dialogVisible,"onUpdate:modelValue":t[1]||=e=>s.dialogVisible=e,width:`500px`},{footer:f(()=>[s.barcodeData.content?c(``,!0):(i(),o(k,{key:0,type:`warning`,onClick:s.handleGenerate},{default:f(()=>[l(O,{icon:`ep:magic-stick`,class:`mr-5px`}),t[2]||=d(` 生成 `,-1)]),_:1})),l(k,{type:`primary`,onClick:s.handlePrint},{default:f(()=>[l(O,{icon:`ep:printer`,class:`mr-5px`}),t[3]||=d(` 打印 `,-1)]),_:1}),l(k,{onClick:s.handleDownload},{default:f(()=>[l(O,{icon:`ep:download`,class:`mr-5px`}),t[4]||=d(` 下载 `,-1)]),_:1}),l(k,{onClick:t[0]||=e=>s.dialogVisible=!1},{default:f(()=>[...t[5]||=[d(`关 闭`,-1)]]),_:1})]),default:f(()=>[p(`div`,null,[p(`div`,N,[s.barcodeData.content?(i(),m(`div`,P,[l(s.Barcode,{ref:`barcodeRef`,content:s.barcodeData.content,format:s.barcodeData.format,width:400,height:150},null,8,[`content`,`format`])])):(i(),o(b,{key:1,description:`暂无条码数据`}))]),l(E,{column:1,border:``},{default:f(()=>[l(S,{label:`条码格式`,"label-align":`left`,align:`left`},{default:f(()=>[s.barcodeData.format?(i(),o(x,{key:0,type:s.DICT_TYPE.MES_WM_BARCODE_FORMAT,value:s.barcodeData.format},null,8,[`type`,`value`])):c(``,!0)]),_:1}),l(S,{label:`业务类型`,"label-align":`left`,align:`left`},{default:f(()=>[s.barcodeData.bizType?(i(),o(x,{key:0,type:s.DICT_TYPE.MES_WM_BARCODE_BIZ_TYPE,value:s.barcodeData.bizType},null,8,[`type`,`value`])):c(``,!0)]),_:1}),l(S,{label:`条码内容`,"label-align":`left`,align:`left`},{default:f(()=>[l(w,{content:s.barcodeData.content,placement:`top`},{default:f(()=>[p(`span`,F,r(s.barcodeData.content),1)]),_:1},8,[`content`])]),_:1}),l(S,{label:`业务编码`,"label-align":`left`,align:`left`},{default:f(()=>[d(r(s.barcodeData.bizCode||`-`),1)]),_:1}),l(S,{label:`业务名称`,"label-align":`left`,align:`left`},{default:f(()=>[d(r(s.barcodeData.bizName||`-`),1)]),_:1}),l(S,{label:`状态`,"label-align":`left`,align:`left`},{default:f(()=>[s.barcodeData.status===void 0?c(``,!0):(i(),o(x,{key:0,type:s.DICT_TYPE.COMMON_STATUS,value:s.barcodeData.status},null,8,[`type`,`value`]))]),_:1}),l(S,{label:`创建时间`,"label-align":`left`,align:`left`},{default:f(()=>[d(r(s.formatDate(s.barcodeData.createTime)),1)]),_:1})]),_:1})])]),_:1},8,[`modelValue`])}var L=b(j,[[`render`,I],[`__file`,`D:/MyWorkProject/807073836/ak-yudao-ui-admin-vue3/src/views/mes/wm/barcode/components/BarcodeDetail.vue`]]);export{M as n,L as t};

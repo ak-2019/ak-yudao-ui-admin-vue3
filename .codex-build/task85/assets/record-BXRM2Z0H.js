@@ -1,0 +1,1 @@
+import{t as e}from"./axios-Bb6m6jt3.js";var t={generateAutoCode:async(t,n)=>await e.post({url:`/mes/md/auto-code-record/generate`,data:{ruleCode:t,inputChar:n}})};export{t};

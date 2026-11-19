@@ -1,0 +1,1 @@
+import{ai as e,ni as t,pi as n,si as r}from"./form-create-BgxR3zFI.js";function i(i,a,o){if(!n(o))return!1;var s=typeof a;return(s==`number`?t(o)&&r(a,o.length):s==`string`&&a in o)?e(o[a],i):!1}export{i as t};

@@ -1,0 +1,1 @@
+import{xa as e,ya as t}from"./form-create-BgxR3zFI.js";import{t as n}from"./Icon-DD2dZj90.js";import"./index-D_xb8cok.js";e();var r=e=>t(n,e);export{r as t};

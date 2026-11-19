@@ -1,0 +1,1 @@
+import{t as e}from"./axios-qHKPeIRF.js";var t=async t=>await e.get({url:`/member/point/record/page`,params:t});export{t};
