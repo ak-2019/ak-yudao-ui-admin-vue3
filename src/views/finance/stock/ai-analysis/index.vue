@@ -1374,6 +1374,7 @@ const sendStream = async (
     createTime: new Date()
   } as ChatMessageVO)
   await scrollToBottom()
+  updateReportStatus('waiting')
 
   try {
     await ChatMessageApi.sendChatMessageStream(
@@ -1430,12 +1431,7 @@ const sendStream = async (
         }
         updateReportStatus('completed')
       },
-      undefined,
-      async () => {
-        if (!controller.signal.aborted && abortController.value === controller) {
-          updateReportStatus('waiting')
-        }
-      }
+      undefined
     )
   } catch {
     if (!controller.signal.aborted && !['interrupted', 'failed'].includes(reportStatus.value)) {
